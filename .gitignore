@@ -1,0 +1,43 @@
+# --- Secrets: never commit ---
+.env
+.env.*
+!.env.example
+*.vault
+vault.json
+secrets/
+*.key
+*.pem
+*.enc
+
+# --- Runtime data ---
+var/
+data/*.db
+data/*.parquet
+data/raw/
+reports/
+logs/
+*.log
+*.log.*
+models/
+backups/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# --- OS / editors ---
+.DS_Store
+.idea/
+.vscode/

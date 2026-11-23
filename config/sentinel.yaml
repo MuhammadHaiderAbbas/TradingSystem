@@ -1,0 +1,151 @@
+# Sentinel configuration. NO SECRETS HERE: API keys/tokens live in the encrypted vault.
+# Sentinel refuses to start if this file is invalid (unknown keys, out-of-range limits,
+# inconsistent risk settings, zero-cost assumptions, or anything that looks like a secret).
+# Override any value with env vars: SENTINEL__RISK__MAX_DAILY_LOSS_PCT=0.02
+
+app:
+  name: sentinel
+  home: var                 # state, vault, logs, reports
+  mode: PAPER               # BACKTEST | PAPER | LIVE (LIVE also needs `sentinel gate` to pass)
+
+logging:
+  level: INFO
+  dir: var/logs
+  max_bytes: 10000000
+  backup_count: 10
+  console: true
+
+market:
+  venue: binance            # any ccxt exchange id (binance, kraken, coinbase) or "alpaca"
+  testnet: true
+  symbols: [BTC/USDT, ETH/USDT]
+  timeframe: 1h             # 1m 5m 15m 1h 4h 1d
+  quote_currency: USDT
+
+data:
+  db_path: var/market.db
+  parquet_dir: var/parquet
+  history_start: "2021-01-01"
+  outlier_zscore: 8.0
+  stale_feed_seconds: 180
+
+costs:                      # be pessimistic: real fills are rarely better than this
+  maker_fee: 0.001          # 0.10%
+  taker_fee: 0.001
+  spread_bps: 2.0
+  slippage_bps: 2.0
+  slippage_vol_k: 0.02      # + 2% of the bar's high-low range as extra slippage
+  funding_rate_8h: 0.0001   # charged on short positions
+  max_participation: 0.1    # fill at most 10% of a bar's volume (partial fills)
+
+rules:                      # default exchange rules for backtests (live uses the venue's rules)
+  min_qty: 0.0
+  step_size: 0.0
+  tick_size: 0.0
+  min_notional: 10.0
+
+backtest:
+  initial_cash: 10000
+  allow_short: false        # spot: long-only
+  holdout_fraction: 0.2     # last 20% of history: never used for tuning
+
+strategies:
+  - name: ema_adx
+    enabled: true
+    params: {fast: 12, slow: 48, adx_n: 14, adx_min: 20.0}
+    regimes: [trend]        # regime filter: only enter in trending markets
+  - name: rsi_bb
+    enabled: false
+    params: {}
+    regimes: [range]
+  - name: donchian
+    enabled: false
+    params: {entry_n: 55, exit_n: 20}
+    regimes: [trend]
+  - name: vol_momentum
+    enabled: false
+    params: {}
+
+combiner:
+  method: none              # none (single strategy) | vote | weighted
+  threshold: 0.5
+
+risk:
+  sizing: fixed_fractional  # fixed_fractional | atr | kelly (fractional, capped)
+  risk_per_trade_pct: 0.01  # 1% of equity between entry and stop
+  kelly_fraction: 0.25
+  kelly_cap_pct: 0.02
+  atr_target_vol_pct: 0.01
+  max_open_positions: 3
+  max_exposure_per_asset_pct: 0.5
+  max_total_exposure_pct: 1.0
+  max_leverage: 1.0         # no leverage
+  max_daily_loss_pct: 0.03
+  max_weekly_loss_pct: 0.06
+  max_drawdown_pct: 0.15
+  max_correlation: 0.8
+  correlation_lookback: 100
+  stop_atr_mult: 2.0        # mandatory stop-loss distance
+  take_profit_atr_mult: null
+  trailing_stop_pct: null
+  cooldown_minutes: 60      # minimum wait before a manual re-enable after a halt
+  circuit_breakers:
+    max_consecutive_losses: 5
+    extreme_vol_zscore: 4.0
+    stale_data_seconds: 180
+    max_api_errors: 5
+
+execution:
+  order_retry_max: 5
+  backoff_base_s: 0.5
+  limit_first: true
+  limit_offset_bps: 1.0
+  limit_timeout_s: 30
+  twap_threshold_notional: 5000
+  twap_slices: 5
+  twap_interval_s: 60
+  min_bar_volume_quote: 0
+  reconcile_interval_min: 5
+  reconcile_tolerance: 0.000001
+
+ml:
+  enabled: false            # stays off unless it beats the baseline out-of-sample after costs
+  model: lightgbm           # lightgbm | random_forest | logistic
+  threshold: 0.55
+  tp_atr: 2.0
+  sl_atr: 2.0
+  max_holding_bars: 48
+  n_splits: 5
+  embargo_pct: 0.01
+  registry_dir: var/models
+  retrain_cron: "0 3 * * 0"
+  drift_psi_threshold: 0.25
+
+sentiment:
+  enabled: false
+  endpoint: http://localhost:11434   # local Ollama only
+  model: llama3.1
+
+dashboard:
+  host: 127.0.0.1
+  port: 8765
+  username: admin
+
+alerts:                     # opt-in; tokens go in the vault (telegram.bot_token, email.password)
+  telegram: {enabled: false, chat_id: ""}
+  email: {enabled: false, smtp_host: "", smtp_port: 587, sender: "", recipient: ""}
+  daily_summary_cron: "5 0 * * *"
+
+gate:
+  min_paper_weeks: 8
+  min_paper_trades: 50
+  max_heartbeat_gap_hours: 6
+  backtest_tolerance: 0.5
+  max_paper_drawdown_pct: 0.15
+  live_capital_cap: 250
+  cap_step_max_multiplier: 2.0
+  min_weeks_between_cap_raises: 4
+
+privacy:
+  telemetry: false          # cannot be enabled
+  allow_cloud: false

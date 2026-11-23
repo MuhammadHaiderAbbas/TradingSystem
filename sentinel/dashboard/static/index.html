@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel Dashboard</title>
+<style>
+:root{--bg:#f7f7f5;--card:#fff;--fg:#1c1c1a;--muted:#6d6c66;--line:#e5e4df;--accent:#2f5d9e;--pos:#2e7d4f;
+--neg:#b3412f;--warn:#a86b00;--kill:#c62828;--kill-fg:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1d1d1b;--fg:#ecebe6;--muted:#a19f98;--line:#2c2c29;
+--accent:#7aa5e0;--pos:#5bbf85;--neg:#e0735f;--warn:#e0a640;--kill:#e53935}}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--fg);
+font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:14px 16px;
+border-bottom:1px solid var(--line);background:var(--card);position:sticky;top:0;z-index:2}
+header h1{font-size:17px;margin:0}.badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;
+font-weight:600;border:1px solid var(--line)}.badge.PAPER{color:var(--accent)}.badge.LIVE{color:var(--neg);
+border-color:var(--neg)}.badge.halt{color:var(--warn);border-color:var(--warn)}
+main{max-width:1200px;margin:0 auto;padding:16px;display:grid;gap:16px;grid-template-columns:repeat(12,1fr)}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;grid-column:span 12;
+min-width:0}section h2{font-size:14px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transform:uppercase;
+letter-spacing:.04em}@media(min-width:900px){.half{grid-column:span 6}.third{grid-column:span 4}}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}.kpi b{display:block;
+font-size:20px;font-variant-numeric:tabular-nums}.kpi span{color:var(--muted);font-size:12px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:12.5px}th,td{text-align:right;
+padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap}th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600}.scroll{overflow-x:auto}.pos{color:var(--pos)}.neg{color:var(--neg)}
+.muted{color:var(--muted)}.gauge{margin:8px 0}.gauge .bar{height:8px;background:var(--line);border-radius:4px;
+overflow:hidden}.gauge .fill{height:100%;background:var(--accent)}.gauge .fill.hot{background:var(--neg)}
+.gauge .row{display:flex;justify-content:space-between;font-size:12px}
+#kill{background:var(--kill);color:var(--kill-fg);border:0;border-radius:10px;padding:12px 22px;font-size:16px;
+font-weight:800;letter-spacing:.05em;cursor:pointer;box-shadow:0 2px 0 rgba(0,0,0,.25)}#kill:focus-visible{outline:3px
+solid var(--fg);outline-offset:2px}button.tg{border:1px solid var(--line);background:transparent;color:var(--fg);
+border-radius:6px;padding:3px 10px;cursor:pointer}svg{width:100%;height:auto;display:block}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--fg);max-width:420px;
+width:calc(100% - 32px)}dialog input[type=text]{width:100%;padding:8px;font-size:16px;border:1px solid var(--line);
+border-radius:6px;background:var(--bg);color:var(--fg)}dialog .actions{display:flex;gap:8px;justify-content:flex-end;
+margin-top:12px}.warnbox{border-left:3px solid var(--warn);padding:6px 10px;margin:6px 0}
+details summary{cursor:pointer}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Sentinel <span id="mode" class="badge">…</span> <span id="haltBadge" class="badge halt" hidden></span></h1>
+    <div class="muted" id="updated">loading…</div></div>
+  <button id="kill" aria-haspopup="dialog">KILL SWITCH</button>
+</header>
+<main>
+  <section><div class="kpis" id="kpis"></div></section>
+  <section><h2>Equity</h2><div id="eqchart" class="muted">no equity data yet</div></section>
+  <section class="half"><h2>Open positions</h2><div class="scroll" id="positions"></div></section>
+  <section class="half"><h2>Open orders</h2><div class="scroll" id="orders"></div></section>
+  <section class="half"><h2>Risk</h2><div id="risk"></div></section>
+  <section class="half"><h2>Backtest vs paper vs live</h2><div id="compare"></div></section>
+  <section><h2>Strategies</h2><div class="scroll" id="strategies"></div></section>
+  <section><h2>Trade journal</h2><div class="scroll" id="journal"></div></section>
+  <section class="half"><h2>System health</h2><div id="health"></div></section>
+  <section class="half"><h2>Recent events</h2><div class="scroll" id="events"></div></section>
+</main>
+<dialog id="killDialog">
+  <form method="dialog" id="killForm">
+    <h3 style="margin-top:0">Engage kill switch?</h3>
+    <p>This cancels all open orders, optionally closes all positions, and <b>locks the bot</b> until you run
+      <code>sentinel unlock</code>.</p>
+    <label><input type="checkbox" id="closePos" checked> Close all positions at market</label><br>
+    <label><input type="checkbox" id="isTest"> This is a drill (records "kill switch tested")</label>
+    <p>Type <b>KILL</b> to confirm:</p>
+    <input type="text" id="killConfirm" autocomplete="off" aria-label="Type KILL to confirm">
+    <div class="actions"><button value="cancel" class="tg">Cancel</button>
+      <button id="killGo" value="go" style="background:var(--kill);color:#fff;border:0;border-radius:6px;padding:6px 14px">Engage</button></div>
+  </form>
+</dialog>
+<script>
+const $=id=>document.getElementById(id);
+const fmt=(v,d=2)=>v==null||Number.isNaN(v)?'–':Number(v).toLocaleString(undefined,{maximumFractionDigits:d,minimumFractionDigits:d});
+const pct=(v,d=2)=>v==null?'–':(v*100).toFixed(d)+'%';
+const cls=v=>v>0?'pos':v<0?'neg':'';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function j(u,o){const r=await fetch(u,o);if(!r.ok)throw new Error(u+' '+r.status);return r.json()}
+function table(rows,cols){if(!rows.length)return '<p class="muted">None.</p>';
+ return '<table><tr>'+cols.map(c=>`<th>${esc(c[0])}</th>`).join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>{
+ const v=c[1](r);return `<td class="${c[2]?c[2](r):''}">${v}</td>`}).join('')+'</tr>').join('')+'</table>'}
+function chart(pts){if(pts.length<2)return '<p class="muted">no equity data yet</p>';
+ const W=1000,H=240,P=50;const xs=pts.map(p=>p.ts),ys=pts.map(p=>p.equity);
+ const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys)||1;const dy=(y1-y0)||1;
+ const X=t=>P+(t-x0)/(x1-x0||1)*(W-P-10),Y=v=>10+(y1-v)/dy*(H-40);
+ let g='';for(let k=0;k<5;k++){const v=y0+dy*k/4;g+=`<line x1="${P}" x2="${W-10}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${P-6}" y="${Y(v)+4}" font-size="11" text-anchor="end" fill="var(--muted)">${fmt(v,0)}</text>`}
+ const step=Math.max(1,Math.floor(pts.length/1500));const line=pts.filter((_,i)=>i%step===0).map(p=>`${X(p.ts).toFixed(1)},${Y(p.equity).toFixed(1)}`).join(' ');
+ const d=t=>new Date(t*1000).toISOString().slice(0,10);
+ return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="equity curve">${g}<polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="1.8"/><text x="${P}" y="${H-6}" font-size="11" fill="var(--muted)">${d(x0)}</text><text x="${W-10}" y="${H-6}" font-size="11" text-anchor="end" fill="var(--muted)">${d(x1)}</text></svg>`}
+function gauge(label,val,limit){const r=limit?Math.min(Math.max(val/limit,0),1):0;
+ return `<div class="gauge"><div class="row"><span>${esc(label)}</span><span>${pct(val)} / ${pct(limit,0)}</span></div><div class="bar"><div class="fill ${r>.75?'hot':''}" style="width:${(r*100).toFixed(0)}%"></div></div></div>`}
+async function refresh(){
+ try{
+ const o=await j('/api/overview');
+ $('mode').textContent=o.mode;$('mode').className='badge '+o.mode;
+ const hb=$('haltBadge');const lock=o.kill?'KILLED / LOCKED':o.halt?('HALTED: '+o.halt.kind):'';hb.hidden=!lock;hb.textContent=lock;
+ const r=await j('/api/risk');
+ $('kpis').innerHTML=[['Equity',fmt(o.equity)],['PnL (24h)',`<span class="${cls(o.pnl_today)}">${fmt(o.pnl_today)}</span>`],
+  ['Exposure',pct(r.exposure_pct,1)],['Drawdown',pct(r.drawdown,1)],['Open positions',`${o.positions.length}/${r.max_open_positions}`],
+  ['LIVE gate',o.gate?'passed':'locked'],['Capital cap',o.capital_cap?fmt(o.capital_cap.cap,0):'–']]
+  .map(([k,v])=>`<div class="kpi"><span>${k}</span><b>${v}</b></div>`).join('');
+ $('positions').innerHTML=table(o.positions,[['Symbol',p=>esc(p.symbol)],['Qty',p=>fmt(p.qty,6)],['Avg',p=>fmt(p.avg_price)],
+  ['Mark',p=>fmt(p.mark)],['Stop',p=>fmt(p.stop)],['Unrealized',p=>fmt(p.unrealized),p=>cls(p.unrealized)],['Strategy',p=>esc(p.strategy)]]);
+ $('orders').innerHTML=table(o.open_orders,[['Symbol',x=>esc(x.symbol)],['Side',x=>esc(x.side)],['Type',x=>esc(x.type)],
+  ['Qty',x=>fmt(x.qty,6)],['Price',x=>fmt(x.limit_price??x.stop_price)],['Purpose',x=>esc(x.purpose)],['Status',x=>esc(x.status)]]);
+ $('risk').innerHTML=gauge('Daily loss',r.daily_loss,r.max_daily_loss_pct)+gauge('Weekly loss',r.weekly_loss,r.max_weekly_loss_pct)+
+  gauge('Drawdown',r.drawdown,r.max_drawdown_pct)+gauge('Exposure',r.exposure_pct,r.max_total_exposure_pct)+
+  `<p class="muted">Consecutive losses ${r.consecutive_losses}/${r.max_consecutive_losses} · risk/trade ${pct(r.risk_per_trade_pct)} · leverage cap ${r.leverage_cap}x</p>`+
+  (r.halt?`<div class="warnbox">Halted: ${esc(r.halt.reason)}</div>`:'')+
+  (r.vetoes.length?'<details><summary>Recent vetoes ('+r.vetoes.length+')</summary>'+table(r.vetoes,[['Time',e=>new Date(e.ts*1000).toISOString().slice(0,16)],['Reason',e=>esc(e.message)]])+'</details>':'');
+ const c=await j('/api/compare');
+ const rows=[['backtest',c.backtest],['paper',c.paper],['live',c.live]];
+ $('compare').innerHTML=(c.drift_warning?'<div class="warnbox">Paper results are drifting from backtest expectations.</div>':'')+
+  table(rows,[['Source',x=>x[0]],['Expectancy/trade',x=>pct(x[1].expectancy_pct,3)],['Win rate',x=>pct(x[1].win_rate,1)],
+  ['Max DD',x=>pct(x[1].max_drawdown,1)],['Trades/week',x=>fmt(x[1].trades_per_week,1)],['Trades',x=>x[1].trades??'–']]);
+ const s=await j('/api/strategies');
+ $('strategies').innerHTML=table(s.strategies,[['Strategy',x=>esc(x.name)],['Signal',x=>{const k=Object.values(s.signals)[0];return k&&k.per_strategy?fmt(k.per_strategy[x.name],2):'–'}],
+  ['Trades',x=>x.trades],['PnL',x=>fmt(x.pnl),x=>cls(x.pnl)],['Win rate',x=>pct(x.win_rate,1)],['Regimes',x=>esc((x.regimes||['all']).join(','))],
+  ['',x=>x.configured?`<button class="tg" data-s="${esc(x.name)}">${x.enabled?'Disable':'Enable'}</button>`:'<span class="muted">off in config</span>']]);
+ document.querySelectorAll('button.tg[data-s]').forEach(b=>b.onclick=async()=>{await j(`/api/strategies/${encodeURIComponent(b.dataset.s)}/toggle`,{method:'POST'});refresh()});
+ const jr=await j('/api/journal?limit=100');
+ $('journal').innerHTML=table(jr,[['Exit',t=>new Date(t.exit_ts*1000).toISOString().slice(0,16)],['Symbol',t=>esc(t.symbol)],['Side',t=>esc(t.side)],
+  ['Entry',t=>fmt(t.entry_price)],['Exit px',t=>fmt(t.exit_price)],['PnL',t=>fmt(t.pnl),t=>cls(t.pnl)],['Fees',t=>fmt(t.fees)],
+  ['Entry reason',t=>esc(t.entry_reason)],['Exit reason',t=>esc(t.exit_reason)],
+  ['Details',t=>`<details><summary>features & checks</summary><pre style="text-align:left;white-space:pre-wrap">${esc(JSON.stringify({features:t.features,risk_checks:t.risk_checks},null,1))}</pre></details>`]]);
+ const h=await j('/api/health');
+ $('health').innerHTML=table(Object.entries(h.components),[['Component',x=>esc(x[0])],['Last heartbeat',x=>fmt(x[1].age_s,0)+'s ago',x=>x[1].stale?'neg':'']])+
+  `<p class="muted">CPU ${fmt(h.system.cpu_pct,0)}% · memory ${fmt(h.system.mem_pct,0)}% · disk ${fmt(h.system.disk_pct,0)}% · errors (1h) ${h.errors_1h} · vetoes (1h) ${h.vetoes_1h}</p>`;
+ const ev=await j('/api/events?limit=30');
+ $('events').innerHTML=table(ev,[['Time',e=>new Date(e.ts*1000).toISOString().slice(0,16)],['Kind',e=>esc(e.kind)],['Level',e=>esc(e.level)],['Message',e=>esc(e.message)]]);
+ const eq=await j('/api/equity');$('eqchart').innerHTML=chart(eq);
+ $('updated').textContent='updated '+new Date().toLocaleTimeString();
+ }catch(e){$('updated').textContent='error: '+e.message}
+}
+$('kill').onclick=()=>{$('killConfirm').value='';$('killDialog').showModal()};
+$('killForm').onsubmit=async ev=>{if(ev.submitter&&ev.submitter.value!=='go')return;
+ if($('killConfirm').value!=='KILL'){ev.preventDefault();$('killConfirm').focus();return}
+ await j('/api/kill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirm:'KILL',close_positions:$('closePos').checked,test:$('isTest').checked})});refresh()};
+refresh();setInterval(refresh,5000);
+</script>
+</body>
+</html>
