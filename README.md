@@ -1,5 +1,7 @@
 # Sentinel
 
+[![CI](https://github.com/MuhammadHaiderAbbas/TradingSystem/actions/workflows/ci.yml/badge.svg)](https://github.com/MuhammadHaiderAbbas/TradingSystem/actions/workflows/ci.yml) · **Website & live demo:** https://muhammadhaiderabbas.github.io/TradingSystem/
+
 A private, self-hosted, **paper-first** algorithmic trading system for crypto (ccxt: Binance,
 Kraken, Coinbase) with a stock adapter (Alpaca) behind the same interface. Everything runs on
 your own machine: no telemetry, no third-party signal services, no cloud dependencies.

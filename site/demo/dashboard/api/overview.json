@@ -1,0 +1,1 @@
+{"mode": "PAPER", "equity": 9755.260835155492, "pnl_today": 0.0, "positions": [], "open_orders": [], "halt": {"kind": "daily_loss", "reason": "daily loss limit 3.0% breached", "ts": 1703606400.0}, "kill": null, "gate": false, "capital_cap": null}

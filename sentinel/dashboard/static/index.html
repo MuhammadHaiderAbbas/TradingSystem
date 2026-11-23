@@ -78,8 +78,8 @@ const cls=v=>v>0?'pos':v<0?'neg':'';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function j(u,o){const r=await fetch(u,o);if(!r.ok)throw new Error(u+' '+r.status);return r.json()}
 function table(rows,cols){if(!rows.length)return '<p class="muted">None.</p>';
- return '<table><tr>'+cols.map(c=>`<th>${esc(c[0])}</th>`).join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>{
- const v=c[1](r);return `<td class="${c[2]?c[2](r):''}">${v}</td>`}).join('')+'</tr>').join('')+'</table>'}
+ return '<div class="scroll"><table><tr>'+cols.map(c=>`<th>${esc(c[0])}</th>`).join('')+'</tr>'+rows.map(r=>'<tr>'+cols.map(c=>{
+ const v=c[1](r);return `<td class="${c[2]?c[2](r):''}">${v}</td>`}).join('')+'</tr>').join('')+'</table></div>'}
 function chart(pts){if(pts.length<2)return '<p class="muted">no equity data yet</p>';
  const W=1000,H=240,P=50;const xs=pts.map(p=>p.ts),ys=pts.map(p=>p.equity);
  const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys)||1;const dy=(y1-y0)||1;

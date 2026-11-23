@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[all,dev]"
+      - name: Lint
+        run: ruff check sentinel tests scripts
+      - name: Tests
+        run: python -m pytest
+      - name: End-to-end demo (offline, synthetic data)
+        env:
+          SENTINEL_HOME: ${{ runner.temp }}/sentinel
+          SENTINEL_MASTER_PASSWORD: ci-only-not-a-secret
+        run: |
+          sentinel init --no-vault
+          sentinel demo --quick
+          sentinel backtest --demo --strategy rsi_bb --no-report

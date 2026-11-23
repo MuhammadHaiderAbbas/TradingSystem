@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if page.title %}{{ page.title }} · {% endif %}Sentinel</title>
+  <meta name="description" content="Sentinel: a private, self-hosted, paper-first algorithmic trading system.">
+  <link rel="stylesheet" href="{{ '/site/assets/site.css' | relative_url }}">
+  <link rel="icon" href="{{ '/site/assets/favicon.svg' | relative_url }}" type="image/svg+xml">
+</head>
+<body>
+  <nav class="nav">
+    <div class="wrap">
+      <a class="brand" href="{{ '/' | relative_url }}">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 4 7v8c0 7.2 5 13.2 12 15 7-1.8 12-7.8 12-15V7L16 2Z" fill="currentColor" opacity=".12"/><path d="M16 2 4 7v8c0 7.2 5 13.2 12 15 7-1.8 12-7.8 12-15V7L16 2Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="m9 18 4-4 3 3 7-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Sentinel
+      </a>
+      <div class="nav-links">
+        <a href="{{ '/#demo' | relative_url }}">Demo</a>
+        <a class="opt" href="{{ '/docs/PERFORMANCE.html' | relative_url }}">Results</a>
+        <a class="opt" href="{{ '/docs/RUNBOOK.html' | relative_url }}">Runbook</a>
+        <a href="https://github.com/MuhammadHaiderAbbas/TradingSystem">GitHub</a>
+      </div>
+    </div>
+  </nav>
+  <div class="wrap doc">
+    <aside>
+      <h4>Guides</h4>
+      <a href="{{ '/' | relative_url }}">Overview</a>
+      <a href="{{ '/docs/DEPLOYMENT.html' | relative_url }}">Deployment</a>
+      <a href="{{ '/docs/RUNBOOK.html' | relative_url }}">Runbook</a>
+      <a href="{{ '/docs/RISK_DISCLOSURE.html' | relative_url }}">Risk disclosure</a>
+      <h4>Results</h4>
+      <a href="{{ '/docs/PERFORMANCE.html' | relative_url }}">Performance report</a>
+      <a href="{{ '/site/demo/backtest_ema_adx.html' | relative_url }}">Sample backtest report</a>
+      <a href="{{ '/site/demo/dashboard/' | relative_url }}">Dashboard snapshot</a>
+      <h4>Strategies</h4>
+      <a href="{{ '/docs/strategies/ema_adx.html' | relative_url }}">EMA + ADX</a>
+      <a href="{{ '/docs/strategies/rsi_bb.html' | relative_url }}">RSI + Bollinger</a>
+      <a href="{{ '/docs/strategies/donchian.html' | relative_url }}">Donchian breakout</a>
+      <a href="{{ '/docs/strategies/vol_momentum.html' | relative_url }}">Vol-adjusted momentum</a>
+      <a href="{{ '/docs/strategies/supertrend_mtf.html' | relative_url }}">Supertrend MTF</a>
+      <a href="{{ '/docs/strategies/buy_hold.html' | relative_url }}">Buy &amp; hold</a>
+    </aside>
+    <article>
+      {{ content }}
+    </article>
+  </div>
+  <footer>
+    <div class="wrap">
+      <div>Trading involves substantial risk of loss. Past performance, backtested or paper, does not guarantee future results.</div>
+    </div>
+  </footer>
+</body>
+</html>
