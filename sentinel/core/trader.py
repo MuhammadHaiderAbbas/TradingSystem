@@ -38,6 +38,7 @@ class Trader:
         self.mode = mode
         self.stopped_out: dict[str, int] = {}
         self.capital_cap: float | None = None  # LIVE: equity the bot may use (readiness-gate cap)
+        self.reserved_provider: Callable[[], float] | None = None  # cash reserved for withdrawals
         om.trade_listeners.append(self._on_trade)
 
     def _on_trade(self, trade: dict) -> None:
@@ -55,6 +56,10 @@ class Trader:
             except KeyError:
                 pass
         equity, cash = bal["equity"], bal["cash"]
+        reserved = self.reserved_provider() if self.reserved_provider else 0.0
+        if reserved > 0:  # money waiting to be withdrawn is never traded
+            equity = max(equity - reserved, 0.0)
+            cash = max(cash - reserved, 0.0)
         if self.capital_cap is not None:
             gross = sum(abs(q) * prices.get(s, 0.0) for s, q in pos.items())
             equity = min(equity, self.capital_cap)

@@ -47,6 +47,18 @@ CREATE INDEX IF NOT EXISTS ix_hblog ON heartbeat_log(mode, ts);
 CREATE TABLE IF NOT EXISTS recon_errors (
     id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL, mode TEXT, details TEXT NOT NULL,
     resolved INTEGER NOT NULL DEFAULT 0, resolved_ts REAL, resolution TEXT);
+CREATE TABLE IF NOT EXISTS cash_flows (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL, mode TEXT NOT NULL,
+    kind TEXT NOT NULL,              -- opening | deposit | withdrawal
+    amount REAL NOT NULL,            -- always positive
+    currency TEXT NOT NULL,
+    status TEXT NOT NULL,            -- requested | ready | completed | cancelled
+    source TEXT NOT NULL,            -- manual | exchange | paper | system
+    external_id TEXT,                -- venue transaction id (dedupe)
+    applied INTEGER NOT NULL DEFAULT 0,  -- applied to risk/paper accounting
+    note TEXT, updated_ts REAL);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_flows_ext ON cash_flows(mode, external_id) WHERE external_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS ix_flows_mode ON cash_flows(mode, status);
 """
 
 

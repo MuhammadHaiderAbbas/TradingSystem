@@ -31,7 +31,7 @@ sys.path.insert(0, str(ROOT))
 SITE = ROOT / "site"
 DEMO = SITE / "demo"
 
-API_ENDPOINTS = ["overview", "equity", "compare", "risk", "strategies", "journal", "health", "events"]
+API_ENDPOINTS = ["overview", "equity", "compare", "risk", "strategies", "journal", "health", "events", "funds"]
 
 
 def log(msg: str) -> None:
@@ -94,13 +94,19 @@ def build_paper_and_dashboard(home: Path, expectations: dict) -> dict:
     from sentinel.config import Settings
     from sentinel.core.state import StateStore
     from sentinel.dashboard.app import create_app, set_password
+    from sentinel.funds import Funds
 
-    s = Settings(app={"home": str(home)})
+    s = Settings(app={"home": str(home)}, funds={"currency": "USDT", "bank_label": "Demo bank ****0000"})
     store = StateStore(home / "state.db")
     store.set("backtest.expectations", expectations)
+    funds = Funds(store, "PAPER", s.funds)
+    funds.deposit(2_500, "paper", "demo deposit (simulated)")  # applied by the runner on its first bar
     bars = 700
-    log(f"paper trading replay ({bars} bars x 2 symbols)")
+    log(f"paper trading replay ({bars} bars x 2 symbols) with a simulated deposit")
     _paper_demo(s, store, bars)
+    st = store.get("paper.broker_state.PAPER")
+    eq = st["cash"] + sum(p["qty"] * st["marks"].get(k, p["avg_price"]) for k, p in st["positions"].items())
+    funds.request_withdrawal(500, eq, st["cash"], note="demo withdrawal request (awaiting payout)")
     pw = "site-build-" + os.urandom(6).hex()
     set_password(store, pw)
     client = TestClient(create_app(s, store))
@@ -142,46 +148,72 @@ def build_paper_and_dashboard(home: Path, expectations: dict) -> dict:
     return {"bars": bars, "equity": ov.get("equity"), "trades": len(store.trades("PAPER")), "store": store}
 
 
-def run_cli_transcript(home: Path) -> str:
-    """Run real CLI commands and return colourised, escaped terminal output."""
-    from typer.testing import CliRunner
+class _Cli:
+    """Runs real `sentinel` commands against an isolated config and records a colourised transcript."""
 
-    from sentinel.cli import app
+    def __init__(self, home: Path, name: str, funds: dict | None = None) -> None:
+        import yaml
 
-    cfg = home / "cli.yaml"
-    import yaml
+        self.home = home
+        d = yaml.safe_load((ROOT / "config" / "sentinel.example.yaml").read_text())
+        d["app"]["home"] = str(home / name)
+        d["logging"]["dir"] = str(home / name / "logs")
+        d["ml"]["registry_dir"] = str(home / name / "models")
+        if funds:
+            d["funds"].update(funds)
+        cfg = home / f"{name}.yaml"
+        cfg.write_text(yaml.safe_dump(d))
+        self.env = {"SENTINEL_CONFIG": str(cfg), "SENTINEL_DEMO_HOME": str(home / name / "demo")}
+        self.lines: list[tuple[str, str]] = []
 
-    data = yaml.safe_load((ROOT / "config" / "sentinel.example.yaml").read_text())
-    data["app"]["home"] = str(home / "cli")
-    data["logging"]["dir"] = str(home / "cli" / "logs")
-    data["ml"]["registry_dir"] = str(home / "cli" / "models")
-    cfg.write_text(yaml.safe_dump(data))
-    env = {"SENTINEL_CONFIG": str(cfg), "SENTINEL_DEMO_HOME": str(home / "cli" / "demo")}
-    runner = CliRunner()
-    lines: list[tuple[str, str]] = []
+    def run(self, args: list[str], keep=None, show: bool = True) -> str:
+        from typer.testing import CliRunner
 
-    def run(args: list[str], keep=None):
+        from sentinel.cli import app
+
         log("cli: sentinel " + " ".join(args))
-        r = runner.invoke(app, args, env=env)
-        lines.append(("c", "$ sentinel " + " ".join(a if " " not in a else f'"{a}"' for a in args)))
-        out = [ln for ln in r.output.splitlines() if ln.strip()]
-        if keep:
-            out = [ln for ln in out if keep(ln)]
-        for ln in out:
+        r = CliRunner().invoke(app, args, env=self.env)
+        if not show:
+            return r.output
+        self.lines.append(("c", "$ sentinel " + " ".join(a if " " not in a else f'"{a}"' for a in args)))
+        for ln in [x for x in r.output.splitlines() if x.strip() and (keep is None or keep(x))]:
             cls = "bad" if re.search(r"FAIL|refused|LOCKED|locked|HIGH", ln) else ("ok" if re.search(
-                r"\[PASS\]|executed|beats baseline: True", ln) else "")
-            lines.append((cls, ln))
-        lines.append(("", ""))
+                r"\[PASS\]|executed|reserved \[|completed|beats baseline: True", ln) else "")
+            self.lines.append((cls, ln))
+        self.lines.append(("", ""))
+        return r.output
 
-    run(["demo", "--quick"], keep=lambda ln: not ln.startswith("Demo state") and "report:" not in ln)
-    run(["live", "--confirm", "I understand that I can lose real money"])
-    run(["paper", "--demo", "--max-bars", "120"], keep=lambda ln: True)
-    run(["kill", "--yes", "--test"])
-    out = []
-    for cls, ln in lines[:-1]:
-        esc = html.escape(ln.replace(str(home), "~"))
-        out.append(f'<span class="{cls}">{esc}</span>' if cls else esc)
-    return "\n".join(out)
+    def html(self) -> str:
+        out = []
+        for cls, ln in self.lines[:-1]:
+            esc = html.escape(ln.replace(str(self.home), "~"))
+            out.append(f'<span class="{cls}">{esc}</span>' if cls else esc)
+        return "\n".join(out)
+
+
+def run_cli_transcript(home: Path) -> str:
+    c = _Cli(home, "cli")
+    c.run(["demo", "--quick"], keep=lambda ln: not ln.startswith("Demo state") and "report:" not in ln)
+    c.run(["live", "--confirm", "I understand that I can lose real money"])
+    c.run(["paper", "--demo", "--max-bars", "120"])
+    c.run(["kill", "--yes", "--test"])
+    return c.html()
+
+
+def run_money_transcript(home: Path) -> str:
+    c = _Cli(home, "money", funds={"currency": "USDT"})
+    c.run(["init", "--no-vault"], show=False)
+    c.run(["funds", "deposit", "1000", "--note", "from my bank"])
+    c.run(["paper", "--demo", "--max-bars", "300"], show=False)
+    keep = ("net invested", "account value", "profit / loss", "withdrawable now", "reserved")
+    c.run(["funds", "status"], keep=lambda ln: ln.strip().startswith(keep))
+    c.run(["funds", "withdraw", "5000", "--profit-only"])
+    out = c.run(["funds", "withdraw", "400", "--note", "to my bank"])
+    m = re.search(r"withdrawal #(\d+)", out)
+    if m:
+        c.run(["funds", "confirm", m.group(1)])
+    c.run(["funds", "status"], keep=lambda ln: ln.strip().startswith(keep))
+    return c.html()
 
 
 def gate_rows(store, tests_ok: bool, n_tests: int) -> str:
@@ -235,13 +267,14 @@ def main() -> None:
         paper = build_paper_and_dashboard(home / "paper", exp)
         gates = gate_rows(paper["store"], tests_ok, n_tests)
         terminal = run_cli_transcript(home)
+        money_terminal = run_money_transcript(home)
     sha = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True,
                          text=True).stdout.strip() or "local"
     build = time.strftime("%Y-%m-%d", time.gmtime())
     page = (SITE / "index.template.html").read_text()
     subs = {
         "TESTS": str(n_tests), "BUILD": build, "SHA": sha, "PERF_ROWS": perf_rows(), "GATE_ROWS": gates,
-        "TERMINAL": terminal, "PAPER_BARS": str(paper["bars"]),
+        "TERMINAL": terminal, "MONEY_TERMINAL": money_terminal, "PAPER_BARS": str(paper["bars"]),
         "PAPER_EQUITY": f"{paper['equity']:,.2f} from a 10,000 start" if paper["equity"] else "–",
         "PAPER_TRADES": str(paper["trades"]),
     }

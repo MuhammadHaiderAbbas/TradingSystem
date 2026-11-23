@@ -21,7 +21,7 @@ section{background:var(--card);border:1px solid var(--line);border-radius:10px;p
 min-width:0}section h2{font-size:14px;margin:0 0 10px;color:var(--muted);font-weight:600;text-transform:uppercase;
 letter-spacing:.04em}@media(min-width:900px){.half{grid-column:span 6}.third{grid-column:span 4}}
 .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}.kpi b{display:block;
-font-size:20px;font-variant-numeric:tabular-nums}.kpi span{color:var(--muted);font-size:12px}
+font-size:20px;font-variant-numeric:tabular-nums}.kpi>span{color:var(--muted);font-size:12px}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:12.5px}th,td{text-align:right;
 padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap}th:first-child,td:first-child{text-align:left}
 th{color:var(--muted);font-weight:600}.scroll{overflow-x:auto}.pos{color:var(--pos)}.neg{color:var(--neg)}
@@ -50,6 +50,21 @@ details summary{cursor:pointer}
   <section><h2>Equity</h2><div id="eqchart" class="muted">no equity data yet</div></section>
   <section class="half"><h2>Open positions</h2><div class="scroll" id="positions"></div></section>
   <section class="half"><h2>Open orders</h2><div class="scroll" id="orders"></div></section>
+  <section><h2>Funds · deposits &amp; withdrawals</h2>
+    <p class="muted" style="margin-top:0">Your money stays at your exchange. Sentinel records deposits, keeps invested capital
+      separate from profit, and reserves cash for withdrawals that <b>you</b> send to your bank on the exchange (2FA).</p>
+    <div class="kpis" id="fundsKpis"></div>
+    <div id="fundsNote"></div>
+    <form id="fundsForm" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0">
+      <label>Amount <input id="fAmount" type="number" min="0" step="0.01" required style="width:120px;padding:6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)"></label>
+      <button class="tg" data-act="deposit">Record deposit</button>
+      <button class="tg" data-act="withdraw">Request withdrawal</button>
+      <label class="muted"><input type="checkbox" id="fProfitOnly" checked> profit only</label>
+    </form>
+    <div id="fundsMsg" class="muted"></div>
+    <div id="fundsOpen"></div>
+    <details><summary>Cash-flow history</summary><div id="fundsFlows"></div></details>
+  </section>
   <section class="half"><h2>Risk</h2><div id="risk"></div></section>
   <section class="half"><h2>Backtest vs paper vs live</h2><div id="compare"></div></section>
   <section><h2>Strategies</h2><div class="scroll" id="strategies"></div></section>
@@ -96,7 +111,7 @@ async function refresh(){
  $('mode').textContent=o.mode;$('mode').className='badge '+o.mode;
  const hb=$('haltBadge');const lock=o.kill?'KILLED / LOCKED':o.halt?('HALTED: '+o.halt.kind):'';hb.hidden=!lock;hb.textContent=lock;
  const r=await j('/api/risk');
- $('kpis').innerHTML=[['Equity',fmt(o.equity)],['PnL (24h)',`<span class="${cls(o.pnl_today)}">${fmt(o.pnl_today)}</span>`],
+ $('kpis').innerHTML=[['Equity',fmt(o.equity)],['PnL (24h)',`<b class="${cls(o.pnl_today)}">${fmt(o.pnl_today)}</b>`],
   ['Exposure',pct(r.exposure_pct,1)],['Drawdown',pct(r.drawdown,1)],['Open positions',`${o.positions.length}/${r.max_open_positions}`],
   ['LIVE gate',o.gate?'passed':'locked'],['Capital cap',o.capital_cap?fmt(o.capital_cap.cap,0):'–']]
   .map(([k,v])=>`<div class="kpi"><span>${k}</span><b>${v}</b></div>`).join('');
@@ -129,10 +144,28 @@ async function refresh(){
   `<p class="muted">CPU ${fmt(h.system.cpu_pct,0)}% · memory ${fmt(h.system.mem_pct,0)}% · disk ${fmt(h.system.disk_pct,0)}% · errors (1h) ${h.errors_1h} · vetoes (1h) ${h.vetoes_1h}</p>`;
  const ev=await j('/api/events?limit=30');
  $('events').innerHTML=table(ev,[['Time',e=>new Date(e.ts*1000).toISOString().slice(0,16)],['Kind',e=>esc(e.kind)],['Level',e=>esc(e.level)],['Message',e=>esc(e.message)]]);
+ const fd=await j('/api/funds');const cur=fd.currency;
+ $('fundsKpis').innerHTML=[['Net invested',fmt(fd.net_invested)],['Account value',fmt(fd.equity)],
+  ['Profit / loss',`<b class="${cls(fd.profit)}">${fmt(fd.profit)}</b>`],['Return on invested',pct(fd.profit_pct)],
+  ['Time-weighted',pct(fd.time_weighted_return)],['Reserved',fmt(fd.reserved_for_withdrawal)],
+  ['Withdrawable now',fmt(fd.withdrawable_now)],['…of which profit',fmt(fd.withdrawable_profit)]]
+  .map(([k,v])=>`<div class="kpi"><span>${k} (${esc(cur)})</span><b>${v}</b></div>`).join('').replace(/\((\w+)\)<\/span><b>(-?[\d.,]+%|–)/g,'</span><b>$2');
+ $('fundsNote').innerHTML=fd.suggestion?`<div class="warnbox">${esc(fd.suggestion)}</div>`:'';
+ $('fundsOpen').innerHTML=fd.open_withdrawals.length?'<h3 style="font-size:14px">Open withdrawal requests</h3>'+table(fd.open_withdrawals,[['#',w=>w.id],['Amount',w=>fmt(w.amount)+' '+esc(w.currency)],
+  ['Status',w=>esc(w.status)],['Note',w=>esc(w.note)],['',w=>`<button class="tg" data-w="${w.id}" data-a="confirm">${fd.mode==='PAPER'?'Confirm (simulate payout)':'I sent it'}</button> <button class="tg" data-w="${w.id}" data-a="cancel">Cancel</button>`]]):'';
+ $('fundsFlows').innerHTML=table(fd.flows,[['#',f=>f.id],['Date',f=>new Date(f.ts*1000).toISOString().slice(0,16)],['Type',f=>esc(f.kind)],
+  ['Amount',f=>fmt(f.amount)+' '+esc(f.currency),f=>f.kind==='withdrawal'?'neg':'pos'],['Status',f=>esc(f.status)],['Source',f=>esc(f.source)],['Note',f=>esc(f.note)]]);
+ document.querySelectorAll('button[data-w]').forEach(b=>b.onclick=async()=>{await j(`/api/funds/${b.dataset.w}/${b.dataset.a}`,{method:'POST'});refresh()});
  const eq=await j('/api/equity');$('eqchart').innerHTML=chart(eq);
  $('updated').textContent='updated '+new Date().toLocaleTimeString();
  }catch(e){$('updated').textContent='error: '+e.message}
 }
+$('fundsForm').onsubmit=ev=>ev.preventDefault();
+document.querySelectorAll('#fundsForm button[data-act]').forEach(b=>b.onclick=async ev=>{ev.preventDefault();
+ const amount=parseFloat($('fAmount').value);if(!(amount>0)){$('fAmount').focus();return}
+ const body=b.dataset.act==='deposit'?{amount}:{amount,profit_only:$('fProfitOnly').checked};
+ const r=await fetch('/api/funds/'+b.dataset.act,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const d=await r.json();$('fundsMsg').innerHTML=esc(r.ok?(d.message+(d.instructions?'\n'+d.instructions:'')):('Refused: '+d.detail)).replace(/\n/g,'<br>');refresh()});
 $('kill').onclick=()=>{$('killConfirm').value='';$('killDialog').showModal()};
 $('killForm').onsubmit=async ev=>{if(ev.submitter&&ev.submitter.value!=='go')return;
  if($('killConfirm').value!=='KILL'){ev.preventDefault();$('killConfirm').focus();return}

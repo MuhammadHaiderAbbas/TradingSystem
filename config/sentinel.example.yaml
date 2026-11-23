@@ -146,6 +146,14 @@ gate:
   cap_step_max_multiplier: 2.0
   min_weeks_between_cap_raises: 4
 
+funds:                      # deposits/withdrawals: recorded + reserved here, executed by YOU on the exchange
+  currency: GBP
+  bank_label: ""            # e.g. "Monzo ****1234": a label only, never account numbers
+  min_withdrawal: 10
+  keep_minimum_balance: 0
+  profit_take_pct: 0.10     # suggest taking profit once it exceeds 10% of invested capital
+  sync_interval_min: 15     # read-only sync of the venue's deposit/withdrawal history
+
 privacy:
   telemetry: false          # cannot be enabled
   allow_cloud: false

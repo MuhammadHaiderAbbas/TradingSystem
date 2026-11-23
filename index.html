@@ -76,6 +76,7 @@
     <div class="nav-links">
       <a href="#demo">Demo</a>
       <a class="opt" href="#how">How it works</a>
+      <a class="opt" href="#money">Your money</a>
       <a class="opt" href="#results">Results</a>
       <a class="opt" href="#start">Get started</a>
       <a href="https://github.com/MuhammadHaiderAbbas/TradingSystem">GitHub</a>
@@ -86,7 +87,7 @@
 <header class="hero">
   <div class="wrap">
     <div class="chips">
-      <a class="chip" href="https://github.com/MuhammadHaiderAbbas/TradingSystem/actions"><span class="dot"></span>210 tests passing</a>
+      <a class="chip" href="https://github.com/MuhammadHaiderAbbas/TradingSystem/actions"><span class="dot"></span>224 tests passing</a>
       <span class="chip">Python 3.11+</span>
       <span class="chip">Crypto (ccxt) · Stocks (Alpaca)</span>
       <span class="chip">Self-hosted · no telemetry</span>
@@ -110,7 +111,7 @@
 <section style="padding-top: 0;">
   <div class="wrap">
     <div class="stats">
-      <div class="stat"><b>210</b><span>automated tests, all passing</span></div>
+      <div class="stat"><b>224</b><span>automated tests, all passing</span></div>
       <div class="stat"><b>12</b><span>phases: data → features → strategies → backtest → ML → risk → execution → ops</span></div>
       <div class="stat"><b>9</b><span>readiness checks before LIVE can unlock</span></div>
       <div class="stat"><b>0</b><span>ways to place an order without a risk approval</span></div>
@@ -160,6 +161,53 @@
   </div>
 </section>
 
+<section id="money">
+  <div class="wrap two">
+    <div>
+      <div class="eyebrow">Your money</div>
+      <h2 class="title">Deposit, let it trade, withdraw your profit. Your money never leaves your control.</h2>
+      <p class="lede" style="font-size:16px">Funds stay in <b>your own</b> exchange account (UK: GBP by Faster Payments on Kraken or
+        Coinbase). Sentinel records every deposit, keeps invested capital separate from profit, and reserves cash when
+        you ask to withdraw. <b>You</b> then send it to your bank on the exchange, with 2FA.</p>
+      <div class="grid mt" style="gap:10px">
+        <div class="check"><span class="st pass">SAFE</span><div>No payment gateway to hack<small>Sentinel never holds or moves money. It has no balance of its own that could be lost.</small></div></div>
+        <div class="check"><span class="st pass">SAFE</span><div>Can't withdraw, by design<small>It uses trade-only keys, refuses keys with withdrawal rights, and a test proves no code path calls a withdrawal API.</small></div></div>
+        <div class="check"><span class="st pass">RIGHT</span><div>Deposits aren't profit, withdrawals aren't losses<small>Profit, return on invested capital and time-weighted return are reported separately, and risk limits measure trading only.</small></div></div>
+      </div>
+      <p class="mt"><a class="btn" href="docs/FUNDING_UK.html">How deposits &amp; withdrawals work →</a></p>
+    </div>
+<div><pre class="term"><code><span class="c">$ sentinel funds deposit 1000 --note &quot;from my bank&quot;</span>
+deposit #1: 1,000.00 USDT recorded (PAPER)
+
+<span class="c">$ sentinel funds status</span>
+net invested                 11,000.00 USDT
+account value                11,159.84 USDT
+profit / loss                159.84 USDT (+1.45% on invested)
+reserved for withdrawal      0.00 USDT
+withdrawable now             11,159.84 USDT (profit part: 159.84 USDT)
+
+<span class="c">$ sentinel funds withdraw 5000 --profit-only</span>
+<span class="bad">refused: requested 5,000.00 but only 159.84 USDT profit available</span>
+
+<span class="c">$ sentinel funds withdraw 400 --note &quot;to my bank&quot;</span>
+<span class="ok">withdrawal #3: 400.00 USDT reserved [ready]</span>
+enough free cash: you can send it now
+PAPER mode: simulate the bank payout with `sentinel funds confirm 3`
+
+<span class="c">$ sentinel funds confirm 3</span>
+<span class="ok">withdrawal #3 completed</span>
+
+<span class="c">$ sentinel funds status</span>
+net invested                 10,600.00 USDT
+account value                10,759.84 USDT
+profit / loss                159.84 USDT (+1.51% on invested)
+reserved for withdrawal      0.00 USDT
+withdrawable now             10,759.84 USDT (profit part: 159.84 USDT)</code></pre>
+      <p style="color:var(--muted);font-size:13px;margin-top:8px">Real output from a paper-mode run on the demo data (USDT). On a live UK account the
+        same commands use GBP, and a withdrawal request prints step-by-step instructions for your exchange.</p></div>
+  </div>
+</section>
+
 <section id="features">
   <div class="wrap">
     <div class="eyebrow">What's inside</div>
@@ -197,7 +245,7 @@
       <div class="card demo-card">
         <div class="thumb"><img src="docs/img/dashboard.png" alt="Dashboard snapshot" loading="lazy"></div>
         <div><h3>Dashboard snapshot</h3><p>A clickable, read-only snapshot of the dashboard after a 700-bar paper-trading session.
-          It shows equity 9,755.26 from a 10,000 start, 6 trades, the risk panel, the trade journal (features and risk checks per trade), and the halts it triggered.</p></div>
+          It shows equity 12,194.08 from a 10,000 start, 6 trades, the risk panel, the trade journal (features and risk checks per trade), and the halts it triggered.</p></div>
         <div class="actions"><a class="btn primary" href="site/demo/dashboard/">Open dashboard →</a></div>
       </div>
       <div class="card demo-card">
@@ -213,7 +261,7 @@
       <div>
         <h3>The readiness gate, as it stands after the demo</h3>
         <p style="color:var(--muted);margin-top:0">LIVE stays locked. This is the gate doing its job, and the output below is real.</p>
-        <div class="card" style="padding:8px 18px"><div class="check"><span class="st fail">FAIL</span><div>paper_duration<small>0.0 continuous weeks (need 8); last heartbeat 0.0h ago</small></div></div><div class="check"><span class="st fail">FAIL</span><div>paper_trades<small>6 closed trades (need 50)</small></div></div><div class="check"><span class="st pass">PASS</span><div>paper_matches_backtest<small>paper expectancy -0.8577%/trade vs backtest -0.7264% (rel diff 18%, tolerance 50%)</small></div></div><div class="check"><span class="st pass">PASS</span><div>paper_drawdown<small>paper max drawdown 4.8% (limit 15%)</small></div></div><div class="check"><span class="st fail">FAIL</span><div>positive_expectancy<small>paper -0.8577%/trade, out-of-sample backtest -1.2074%/trade (both must be &gt; 0 after fees)</small></div></div><div class="check"><span class="st pass">PASS</span><div>reconciliation_clean<small>0 unresolved reconciliation errors</small></div></div><div class="check"><span class="st pass">PASS</span><div>tests_pass<small>210 passed</small></div></div><div class="check"><span class="st fail">FAIL</span><div>kill_switch_tested<small>never tested (run `sentinel kill --test` while paper trading)</small></div></div><div class="check"><span class="st fail">FAIL</span><div>api_key_safe<small>trade=None withdraw=None ip_whitelist=None (not checked)</small></div></div></div>
+        <div class="card" style="padding:8px 18px"><div class="check"><span class="st fail">FAIL</span><div>paper_duration<small>0.0 continuous weeks (need 8); last heartbeat 0.0h ago</small></div></div><div class="check"><span class="st fail">FAIL</span><div>paper_trades<small>6 closed trades (need 50)</small></div></div><div class="check"><span class="st pass">PASS</span><div>paper_matches_backtest<small>paper expectancy -0.8577%/trade vs backtest -0.7264% (rel diff 18%, tolerance 50%)</small></div></div><div class="check"><span class="st pass">PASS</span><div>paper_drawdown<small>paper max drawdown 4.8% (limit 15%)</small></div></div><div class="check"><span class="st fail">FAIL</span><div>positive_expectancy<small>paper -0.8577%/trade, out-of-sample backtest -1.2074%/trade (both must be &gt; 0 after fees)</small></div></div><div class="check"><span class="st pass">PASS</span><div>reconciliation_clean<small>0 unresolved reconciliation errors</small></div></div><div class="check"><span class="st pass">PASS</span><div>tests_pass<small>224 passed</small></div></div><div class="check"><span class="st fail">FAIL</span><div>kill_switch_tested<small>never tested (run `sentinel kill --test` while paper trading)</small></div></div><div class="check"><span class="st fail">FAIL</span><div>api_key_safe<small>trade=None withdraw=None ip_whitelist=None (not checked)</small></div></div></div>
       </div>
       <div>
         <h3>From a terminal</h3>
@@ -225,7 +273,7 @@ return -14.70% vs buy&amp;hold -65.56%, sharpe -1.22, max DD -15.05%, trades 44
 <span class="bad">beats baseline: False -&gt; refused: model did not beat the baseline out-of-sample after costs</span>
 == 3/4 paper trading (replay of the last 300 synthetic bars) ==
 paper (demo replay): 300 synthetic bars x 2 symbols ...
-done: equity 10145.31 (start 10000.00), positions {}, trades 2
+done: equity 10145.31, positions {}, trades 2
 <span class="bad">== 4/4 LIVE readiness gate (expected to FAIL: no 8 weeks of paper trading) ==</span>
 <span class="bad">[FAIL] paper_duration           0.0 continuous weeks (need 8.0); last heartbeat 0.0h ago</span>
 <span class="bad">[FAIL] paper_trades             2 closed trades (need 50)</span>
@@ -242,7 +290,7 @@ done: equity 10145.31 (start 10000.00), positions {}, trades 2
 
 <span class="c">$ sentinel paper --demo --max-bars 120</span>
 paper (demo replay): 120 synthetic bars x 2 symbols ...
-done: equity 10092.06 (start 10000.00), positions {&#x27;SYNTH-ETH/USDT&#x27;: 7.75664115741131, &#x27;SYNTH-BTC/USDT&#x27;: 0.5905438425575434}, trades 2
+done: equity 10092.06, positions {&#x27;SYNTH-ETH/USDT&#x27;: 7.75664115741131, &#x27;SYNTH-BTC/USDT&#x27;: 0.5905438425575434}, trades 2
 
 <span class="c">$ sentinel kill --yes --test</span>
 <span class="ok">kill executed directly: {&#x27;cancelled&#x27;: 2, &#x27;closed&#x27;: [&#x27;SYNTH-ETH/USDT&#x27;, &#x27;SYNTH-BTC/USDT&#x27;]}</span>
@@ -278,6 +326,7 @@ done: equity 10092.06 (start 10000.00), positions {&#x27;SYNTH-ETH/USDT&#x27;: 7
       <h2 class="title">Running in three commands</h2>
       <p class="lede" style="font-size:16px">Python 3.11+. The demo needs no API keys and no network. Paper trading uses public prices only.</p>
       <div class="docs-list mt">
+        <a href="docs/FUNDING_UK.html">Deposits, withdrawals &amp; profit (UK) <span>→</span></a>
         <a href="docs/DEPLOYMENT.html">Deployment: local, Docker, VPS <span>→</span></a>
         <a href="docs/RUNBOOK.html">Runbook: halts, outages, leaked keys <span>→</span></a>
         <a href="docs/strategies/ema_adx.html">Strategy docs <span>→</span></a>
@@ -292,7 +341,7 @@ pip install -e ".[all,dev]"
 cp config/sentinel.example.yaml config/sentinel.yaml
 sentinel init          # encrypted vault + state
 sentinel demo          # backtest, ML check, paper, gate
-make test              # 210 tests
+make test              # 224 tests
 
 # real data, paper trading, dashboard
 sentinel data download --timeframe 1h
@@ -306,7 +355,7 @@ sentinel dashboard --set-password &amp;&amp; sentinel dashboard</code></pre>
   <div class="wrap">
     <div><b>Risk disclosure.</b> Trading involves substantial risk of loss. Backtested and paper results are hypothetical
       and do not guarantee future results. Sentinel is software, not financial advice; you are responsible for how you use it.</div>
-    <div>Built 2026-11-23 from commit <code>cda02b0</code> · <a href="https://github.com/MuhammadHaiderAbbas/TradingSystem">GitHub</a> ·
+    <div>Built 2026-11-23 from commit <code>aef7e5f</code> · <a href="https://github.com/MuhammadHaiderAbbas/TradingSystem">GitHub</a> ·
       <a href="docs/PERFORMANCE.html">Performance</a> · <a href="docs/RUNBOOK.html">Runbook</a></div>
   </div>
 </footer>

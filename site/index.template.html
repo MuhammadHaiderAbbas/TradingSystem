@@ -76,6 +76,7 @@
     <div class="nav-links">
       <a href="#demo">Demo</a>
       <a class="opt" href="#how">How it works</a>
+      <a class="opt" href="#money">Your money</a>
       <a class="opt" href="#results">Results</a>
       <a class="opt" href="#start">Get started</a>
       <a href="https://github.com/MuhammadHaiderAbbas/TradingSystem">GitHub</a>
@@ -157,6 +158,27 @@
         <path class="veto" d="M350 150h26"/>
       </svg>
     </div>
+  </div>
+</section>
+
+<section id="money">
+  <div class="wrap two">
+    <div>
+      <div class="eyebrow">Your money</div>
+      <h2 class="title">Deposit, let it trade, withdraw your profit. Your money never leaves your control.</h2>
+      <p class="lede" style="font-size:16px">Funds stay in <b>your own</b> exchange account (UK: GBP by Faster Payments on Kraken or
+        Coinbase). Sentinel records every deposit, keeps invested capital separate from profit, and reserves cash when
+        you ask to withdraw. <b>You</b> then send it to your bank on the exchange, with 2FA.</p>
+      <div class="grid mt" style="gap:10px">
+        <div class="check"><span class="st pass">SAFE</span><div>No payment gateway to hack<small>Sentinel never holds or moves money. It has no balance of its own that could be lost.</small></div></div>
+        <div class="check"><span class="st pass">SAFE</span><div>Can't withdraw, by design<small>It uses trade-only keys, refuses keys with withdrawal rights, and a test proves no code path calls a withdrawal API.</small></div></div>
+        <div class="check"><span class="st pass">RIGHT</span><div>Deposits aren't profit, withdrawals aren't losses<small>Profit, return on invested capital and time-weighted return are reported separately, and risk limits measure trading only.</small></div></div>
+      </div>
+      <p class="mt"><a class="btn" href="docs/FUNDING_UK.html">How deposits &amp; withdrawals work →</a></p>
+    </div>
+<div><pre class="term"><code><!--@MONEY_TERMINAL@--></code></pre>
+      <p style="color:var(--muted);font-size:13px;margin-top:8px">Real output from a paper-mode run on the demo data (USDT). On a live UK account the
+        same commands use GBP, and a withdrawal request prints step-by-step instructions for your exchange.</p></div>
   </div>
 </section>
 
@@ -250,6 +272,7 @@
       <h2 class="title">Running in three commands</h2>
       <p class="lede" style="font-size:16px">Python 3.11+. The demo needs no API keys and no network. Paper trading uses public prices only.</p>
       <div class="docs-list mt">
+        <a href="docs/FUNDING_UK.html">Deposits, withdrawals &amp; profit (UK) <span>→</span></a>
         <a href="docs/DEPLOYMENT.html">Deployment: local, Docker, VPS <span>→</span></a>
         <a href="docs/RUNBOOK.html">Runbook: halts, outages, leaked keys <span>→</span></a>
         <a href="docs/strategies/ema_adx.html">Strategy docs <span>→</span></a>

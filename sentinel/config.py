@@ -233,6 +233,18 @@ class GateConfig(_Model):
     min_weeks_between_cap_raises: float = Field(4, ge=0)
 
 
+class FundsConfig(_Model):
+    """Deposits, withdrawals and profit accounting. Money never moves through Sentinel: funds stay at
+    the exchange/broker, and every withdrawal is executed and 2FA-approved by you on the venue."""
+
+    currency: str = "GBP"                      # account / reporting currency
+    bank_label: str = ""                        # e.g. "Monzo ****1234" (a label only, no account numbers)
+    min_withdrawal: float = Field(10.0, ge=0)
+    keep_minimum_balance: float = Field(0.0, ge=0)  # never request a withdrawal that drops cash below this
+    profit_take_pct: float | None = Field(0.10, gt=0, le=10)  # suggest withdrawing profit above +10% on invested
+    sync_interval_min: int = Field(15, ge=1)    # how often to read deposits/withdrawals from the venue (read-only)
+
+
 class PrivacyConfig(_Model):
     telemetry: Literal[False] = False
     allow_cloud: bool = False
@@ -257,6 +269,7 @@ class Settings(_Model):
     dashboard: DashboardConfig = Field(default_factory=DashboardConfig)
     alerts: AlertsConfig = Field(default_factory=AlertsConfig)
     gate: GateConfig = Field(default_factory=GateConfig)
+    funds: FundsConfig = Field(default_factory=FundsConfig)
     privacy: PrivacyConfig = Field(default_factory=PrivacyConfig)
 
     @model_validator(mode="after")

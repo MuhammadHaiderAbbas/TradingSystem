@@ -222,6 +222,15 @@ class RiskManager:
                 self.halt("drawdown", f"max drawdown {c.max_drawdown_pct:.1%} breached", ts)
         self._save()
 
+    def on_cash_flow(self, amount: float) -> None:
+        """A deposit (+) or withdrawal (-) is not profit or loss: shift the reference equities so the
+        daily/weekly loss and drawdown guards measure trading performance only."""
+        for attr in ("peak_equity", "day_start_equity", "week_start_equity"):
+            v = getattr(self, attr)
+            if v is not None:
+                setattr(self, attr, max(v + amount, 0.0))
+        self._save()
+
     def on_trade_closed(self, trade: dict) -> None:
         pnl = trade.get("pnl", 0.0)
         if pnl < 0:

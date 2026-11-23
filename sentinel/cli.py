@@ -32,8 +32,9 @@ ml_app = typer.Typer(no_args_is_help=True, help="Machine-learning filter (meta-l
 recon_app = typer.Typer(no_args_is_help=True, help="Reconciliation errors.")
 cap_app = typer.Typer(no_args_is_help=True, help="LIVE capital cap.")
 ops_app = typer.Typer(no_args_is_help=True, help="Operations: backups, time sync.")
+funds_app = typer.Typer(no_args_is_help=True, help="Deposits, withdrawals and profit (money stays at your exchange).")
 for sub, name in ((data_app, "data"), (vault_app, "vault"), (ml_app, "ml"), (recon_app, "recon"), (cap_app, "cap"),
-                  (ops_app, "ops")):
+                  (ops_app, "ops"), (funds_app, "funds")):
     app.add_typer(sub, name=name)
 
 log = get_logger("cli")
@@ -353,8 +354,7 @@ def _paper_demo(s: Settings, store: StateStore, max_bars: int, history_bars: int
     finally:
         runner.stop()
     bal = broker.balance()
-    _echo(f"done: equity {bal['equity']:.2f} (start {s.backtest.initial_cash:.2f}), positions {broker.positions()}, "
-          f"trades {len(store.trades('PAPER'))}")
+    _echo(f"done: equity {bal['equity']:.2f}, positions {broker.positions()}, trades {len(store.trades('PAPER'))}")
 
 
 def _live_loop(s: Settings, store: StateStore, mode: Mode, broker, history: dict, use_ws: bool) -> None:
@@ -379,7 +379,7 @@ def _live_loop(s: Settings, store: StateStore, mode: Mode, broker, history: dict
             runner.on_bar(sym, bar)
 
     sched = BackgroundScheduler(timezone="UTC")
-    sched.add_job(lambda: _locked(lock, runner.check_kill), "interval", seconds=2, id="kill")
+    sched.add_job(lambda: _locked(lock, runner.tick), "interval", seconds=2, id="kill_and_funds")
     sched.add_job(lambda: _locked(lock, lambda: runner.maybe_reconcile(force=True)), "interval",
                   minutes=s.execution.reconcile_interval_min, id="reconcile")
     sched.add_job(lambda: performance_report(store, mode.value, 1, s.home / "reports" / "daily.html") and (
@@ -802,6 +802,185 @@ def ops_restore(path: Path, dest: Path = typer.Option(Path("restore"))) -> None:
     pw = os.environ.get("SENTINEL_BACKUP_PASSWORD") or getpass.getpass("Backup password: ")
     names = restore_backup(path, pw, dest)
     _echo(f"restored {len(names)} files into {dest}")
+
+
+# ===================================================================== funds
+def _funds_ctx(config):
+    from sentinel.funds import Funds
+
+    s, store = _load(config)
+    mode = Mode(store.get("mode.current") or s.app.mode.value)
+    return s, store, mode, Funds(store, mode.value, s.funds)
+
+
+def _balances(s: Settings, store: StateStore, mode: Mode) -> tuple[float | None, float | None]:
+    st = store.get(f"paper.broker_state.{mode.value}") if mode is Mode.PAPER else None
+    if st:  # PAPER: the saved paper account is the source of truth
+        return st["cash"] + sum(p["qty"] * st["marks"].get(sym, p["avg_price"]) for sym, p in st["positions"].items()), \
+            st["cash"]
+    eq = store.equity_curve(mode.value)
+    if eq:
+        return eq[-1]["equity"], eq[-1]["cash"]
+    return (s.backtest.initial_cash, s.backtest.initial_cash) if mode is Mode.PAPER else (None, None)
+
+
+def _apply_offline(s: Settings, store: StateStore, mode: Mode, funds) -> None:
+    """No bot running: apply recorded flows now (PAPER: to the saved paper account; both: risk references)."""
+    if _runner_alive(store):
+        _echo("the running bot will apply this within a few seconds")
+        return
+    from sentinel.execution.paper import PaperBroker
+    from sentinel.risk.manager import RiskManager
+
+    risk = RiskManager(s.risk, store, mode)
+    broker = None
+    if mode is Mode.PAPER:
+        broker = PaperBroker(s.backtest.initial_cash, s.costs)
+        st = store.get(f"paper.broker_state.{mode.value}")
+        if st:
+            broker.restore_state(st)
+        funds.ensure_opening(broker.balance()["equity"])
+    last = store.equity_curve(mode.value)
+    ts = (last[-1]["ts"] + 1) if last else None  # stay on the bot's clock (paper may replay old data)
+    done = funds.apply_pending(broker, risk, ts=ts)
+    if broker is not None and done:
+        store.set(f"paper.broker_state.{mode.value}", broker.to_state())
+        if last:
+            bal = broker.balance()
+            store.record_equity(mode.value, ts, bal["equity"], bal["cash"], broker.portfolio.exposure_pct())
+    funds.refresh_ready(_balances(s, store, mode)[1] or 0.0)
+
+
+def _money(v, cur):
+    return "–" if v is None else f"{v:,.2f} {cur}"
+
+
+@funds_app.command("status")
+def funds_status(config: Path | None = CONFIG_OPT, as_json: bool = typer.Option(False, "--json")) -> None:
+    """Invested capital vs profit, what you can withdraw now, open withdrawal requests."""
+    s, store, mode, funds = _funds_ctx(config)
+    eq, cash = _balances(s, store, mode)
+    sm = funds.summary(eq, cash, store.equity_curve(mode.value))
+    sm["open_withdrawals"] = funds.flows(("requested", "ready"), "withdrawal")
+    if as_json:
+        _print_json(sm)
+        return
+    c = sm["currency"]
+    _echo(f"mode {mode.value} · funds stay at your exchange; Sentinel only records and reserves")
+    for label, key in (("opening balance", "opening"), ("deposits", "deposits"), ("withdrawals", "withdrawals"),
+                       ("net invested", "net_invested"), ("account value", "equity"), ("free cash", "cash")):
+        _echo(f"{label:28s} {_money(sm[key], c)}")
+    _echo(f"{'profit / loss':28s} {_money(sm['profit'], c)} ({sm['profit_pct']:+.2%} on invested)")
+    if sm["time_weighted_return"] is not None:
+        _echo(f"{'time-weighted return':28s} {sm['time_weighted_return']:+.2%}")
+    _echo(f"{'reserved for withdrawal':28s} {_money(sm['reserved_for_withdrawal'], c)}")
+    _echo(f"{'withdrawable now':28s} {_money(sm['withdrawable_now'], c)} (profit part: "
+          f"{_money(sm['withdrawable_profit'], c)})")
+    for w in sm["open_withdrawals"]:
+        _echo(f"  withdrawal #{w['id']}: {_money(w['amount'], c)} [{w['status']}] {w['note']}")
+    if sm["suggestion"]:
+        _echo(f"suggestion: {sm['suggestion']}")
+
+
+@funds_app.command("deposit")
+def funds_deposit(amount: float | None = typer.Argument(None, help="Amount that arrived"),
+                  config: Path | None = CONFIG_OPT, note: str = "",
+                  how: bool = typer.Option(False, "--how", help="Show how to deposit from a UK bank")) -> None:
+    """Record a deposit (PAPER: simulated). On a live venue the read-only sync records deposits automatically."""
+    s, store, mode, funds = _funds_ctx(config)
+    if how:
+        _echo(funds.deposit_instructions(s.market.venue))
+        return
+    if not amount:
+        _echo("give an amount, e.g. `sentinel funds deposit 500` (or --how for instructions)", err=True)
+        raise typer.Exit(1)
+    fid = funds.deposit(amount, "paper" if mode is Mode.PAPER else "manual", note)
+    _echo(f"deposit #{fid}: {_money(amount, s.funds.currency)} recorded ({mode.value})")
+    _apply_offline(s, store, mode, funds)
+
+
+@funds_app.command("withdraw")
+def funds_withdraw(amount: float, config: Path | None = CONFIG_OPT,
+                   profit_only: bool = typer.Option(False, "--profit-only", help="Refuse if it would touch capital"),
+                   note: str = "") -> None:
+    """Request a withdrawal: reserves the cash so the bot stops trading it, then tells you how to send it
+    to your bank on the exchange (you approve it there with 2FA)."""
+    from sentinel.funds import FundsError
+
+    s, store, mode, funds = _funds_ctx(config)
+    eq, cash = _balances(s, store, mode)
+    if eq is None:
+        _echo("no account balance known yet: start the bot once (or run `sentinel funds sync`)", err=True)
+        raise typer.Exit(1)
+    try:
+        fid, chk = funds.request_withdrawal(amount, eq, cash, profit_only, note)
+    except FundsError as e:
+        _echo(f"refused: {e}", err=True)
+        raise typer.Exit(1) from e
+    _echo(f"withdrawal #{fid}: {_money(amount, s.funds.currency)} reserved [{'ready' if chk.ready else 'requested'}]")
+    _echo(chk.message)
+    if mode is Mode.PAPER:
+        _echo(f"PAPER mode: simulate the bank payout with `sentinel funds confirm {fid}`")
+    else:
+        _echo(funds.instructions(s.market.venue, amount))
+
+
+@funds_app.command("confirm")
+def funds_confirm(flow_id: int, config: Path | None = CONFIG_OPT, ref: str = typer.Option(None, help="Venue ref")) -> None:
+    """Mark a withdrawal as sent to your bank (PAPER: simulates the payout)."""
+    from sentinel.funds import FundsError
+
+    s, store, mode, funds = _funds_ctx(config)
+    try:
+        funds.confirm_withdrawal(flow_id, ref)
+    except FundsError as e:
+        _echo(f"refused: {e}", err=True)
+        raise typer.Exit(1) from e
+    _echo(f"withdrawal #{flow_id} completed")
+    _apply_offline(s, store, mode, funds)
+
+
+@funds_app.command("cancel")
+def funds_cancel(flow_id: int, config: Path | None = CONFIG_OPT) -> None:
+    """Cancel an open withdrawal request and release the reserved cash."""
+    from sentinel.funds import FundsError
+
+    s, store, mode, funds = _funds_ctx(config)
+    try:
+        funds.cancel_withdrawal(flow_id)
+    except FundsError as e:
+        _echo(f"refused: {e}", err=True)
+        raise typer.Exit(1) from e
+    _echo(f"withdrawal #{flow_id} cancelled; cash released back to trading")
+
+
+@funds_app.command("history")
+def funds_history(config: Path | None = CONFIG_OPT) -> None:
+    s, store, mode, funds = _funds_ctx(config)
+    for f in funds.flows():
+        _echo(f"#{f['id']:<4} {time.strftime('%Y-%m-%d %H:%M', time.gmtime(f['ts']))}  {f['kind']:10s} "
+              f"{f['amount']:>12,.2f} {f['currency']}  {f['status']:9s} {f['source']:8s} {f['note'] or ''}")
+
+
+@funds_app.command("sync")
+def funds_sync(config: Path | None = CONFIG_OPT) -> None:
+    """Read deposits/withdrawals from the exchange (read-only key permission is enough)."""
+    from sentinel.data.downloader import make_exchange
+    from sentinel.security.vault import exchange_credentials
+
+    s, store, mode, funds = _funds_ctx(config)
+    ex = make_exchange(s.market.venue, s.market.testnet, exchange_credentials(_vault(s), s.market.venue))
+    _print_json(funds.sync_from_exchange(ex))
+    _apply_offline(s, store, mode, funds)
+
+
+@funds_app.command("export")
+def funds_export(config: Path | None = CONFIG_OPT, year: int | None = None,
+                 out: Path | None = None) -> None:
+    """CSV of deposits, withdrawals and trades for your records (UK: HMRC capital gains). Not tax advice."""
+    s, store, mode, funds = _funds_ctx(config)
+    p = funds.export_csv(out or s.home / "reports" / f"funds_{mode.value}_{year or 'all'}.csv", year)
+    _echo(f"wrote {p}")
 
 
 # ===================================================================== misc

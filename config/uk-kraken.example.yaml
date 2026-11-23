@@ -1,0 +1,160 @@
+# UK profile: GBP account on Kraken (Coinbase also works: set venue: coinbase).
+# Money path: UK bank --Faster Payments--> Kraken GBP balance --> Sentinel trades BTC/GBP, ETH/GBP
+#             --> you withdraw GBP to your bank on Kraken (2FA). Sentinel never moves money.
+# Kraken has no public spot testnet: run PAPER (public prices, simulated fills) first.
+# Use: cp config/uk-kraken.example.yaml config/sentinel.yaml
+app:
+  name: sentinel
+  home: var
+  mode: PAPER
+logging:
+  level: INFO
+  dir: var/logs
+  max_bytes: 10000000
+  backup_count: 10
+  console: true
+market:
+  venue: kraken
+  testnet: false
+  symbols:
+  - BTC/GBP
+  - ETH/GBP
+  timeframe: 1h
+  quote_currency: GBP
+data:
+  db_path: var/market.db
+  parquet_dir: var/parquet
+  history_start: '2021-01-01'
+  outlier_zscore: 8.0
+  stale_feed_seconds: 180
+costs:
+  maker_fee: 0.001
+  taker_fee: 0.001
+  spread_bps: 2.0
+  slippage_bps: 2.0
+  slippage_vol_k: 0.02
+  funding_rate_8h: 0.0001
+  max_participation: 0.1
+rules:
+  min_qty: 0.0
+  step_size: 0.0
+  tick_size: 0.0
+  min_notional: 10.0
+backtest:
+  initial_cash: 10000
+  allow_short: false
+  holdout_fraction: 0.2
+strategies:
+- name: ema_adx
+  enabled: true
+  params:
+    fast: 12
+    slow: 48
+    adx_n: 14
+    adx_min: 20.0
+  regimes:
+  - trend
+- name: rsi_bb
+  enabled: false
+  params: {}
+  regimes:
+  - range
+- name: donchian
+  enabled: false
+  params:
+    entry_n: 55
+    exit_n: 20
+  regimes:
+  - trend
+- name: vol_momentum
+  enabled: false
+  params: {}
+combiner:
+  method: none
+  threshold: 0.5
+risk:
+  sizing: fixed_fractional
+  risk_per_trade_pct: 0.01
+  kelly_fraction: 0.25
+  kelly_cap_pct: 0.02
+  atr_target_vol_pct: 0.01
+  max_open_positions: 3
+  max_exposure_per_asset_pct: 0.5
+  max_total_exposure_pct: 1.0
+  max_leverage: 1.0
+  max_daily_loss_pct: 0.03
+  max_weekly_loss_pct: 0.06
+  max_drawdown_pct: 0.15
+  max_correlation: 0.8
+  correlation_lookback: 100
+  stop_atr_mult: 2.0
+  take_profit_atr_mult: null
+  trailing_stop_pct: null
+  cooldown_minutes: 60
+  circuit_breakers:
+    max_consecutive_losses: 5
+    extreme_vol_zscore: 4.0
+    stale_data_seconds: 180
+    max_api_errors: 5
+execution:
+  order_retry_max: 5
+  backoff_base_s: 0.5
+  limit_first: true
+  limit_offset_bps: 1.0
+  limit_timeout_s: 30
+  twap_threshold_notional: 5000
+  twap_slices: 5
+  twap_interval_s: 60
+  min_bar_volume_quote: 0
+  reconcile_interval_min: 5
+  reconcile_tolerance: 1.0e-06
+ml:
+  enabled: false
+  model: lightgbm
+  threshold: 0.55
+  tp_atr: 2.0
+  sl_atr: 2.0
+  max_holding_bars: 48
+  n_splits: 5
+  embargo_pct: 0.01
+  registry_dir: var/models
+  retrain_cron: 0 3 * * 0
+  drift_psi_threshold: 0.25
+sentiment:
+  enabled: false
+  endpoint: http://localhost:11434
+  model: llama3.1
+dashboard:
+  host: 127.0.0.1
+  port: 8765
+  username: admin
+alerts:
+  telegram:
+    enabled: false
+    chat_id: ''
+  email:
+    enabled: false
+    smtp_host: ''
+    smtp_port: 587
+    sender: ''
+    recipient: ''
+  daily_summary_cron: 5 0 * * *
+gate:
+  min_paper_weeks: 8
+  min_paper_trades: 50
+  max_heartbeat_gap_hours: 6
+  backtest_tolerance: 0.5
+  max_paper_drawdown_pct: 0.15
+  live_capital_cap: 250
+  cap_step_max_multiplier: 2.0
+  min_weeks_between_cap_raises: 4
+privacy:
+  telemetry: false
+  allow_cloud: false
+funds:
+  currency: GBP
+  bank_label: ''
+  min_withdrawal: 10.0
+  keep_minimum_balance: 0.0
+  profit_take_pct: 0.1
+  sync_interval_min: 15

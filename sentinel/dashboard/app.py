@@ -41,6 +41,17 @@ def set_password(store: StateStore, password: str) -> None:
     store.set(PW_KEY, _ph.hash(password))
 
 
+class DepositRequest(BaseModel):
+    amount: float
+    note: str = ""
+
+
+class WithdrawRequest(BaseModel):
+    amount: float
+    profit_only: bool = False
+    note: str = ""
+
+
 class KillRequest(BaseModel):
     confirm: str
     close_positions: bool = True
@@ -200,6 +211,74 @@ def create_app(settings: Settings, store: StateStore) -> FastAPI:
     @app.get("/api/events")
     def events(kind: str | None = None, limit: int = 100, _: str = Depends(auth)):
         return store.events(kind=kind, limit=limit)
+
+    # ---- funds: money stays at the exchange; these endpoints only record / reserve ----
+    def _funds():
+        from sentinel.funds import Funds
+
+        return Funds(store, mode_now(), settings.funds)
+
+    def _bal():
+        mode = mode_now()
+        st = store.get(f"paper.broker_state.{mode}") if mode == "PAPER" else None
+        if st:
+            return (st["cash"] + sum(p["qty"] * st["marks"].get(k, p["avg_price"]) for k, p in st["positions"].items()),
+                    st["cash"])
+        eq = store.equity_curve(mode)
+        return (eq[-1]["equity"], eq[-1]["cash"]) if eq else (None, None)
+
+    @app.get("/api/funds")
+    def funds(_: str = Depends(auth)):
+        f = _funds()
+        eq, cash = _bal()
+        out = f.summary(eq, cash, store.equity_curve(mode_now()))
+        out.update(mode=mode_now(), flows=list(reversed(f.flows()))[:100], venue=settings.market.venue,
+                   open_withdrawals=f.flows(("requested", "ready"), "withdrawal"))
+        return out
+
+    @app.post("/api/funds/deposit")
+    def funds_deposit(req: DepositRequest, user: str = Depends(auth)):
+        from sentinel.funds import FundsError
+
+        try:
+            fid = _funds().deposit(req.amount, "paper" if mode_now() == "PAPER" else "manual",
+                                   req.note or f"recorded by {user}")
+        except FundsError as e:
+            raise HTTPException(400, str(e)) from e
+        return {"id": fid, "message": "deposit recorded; the bot applies it on its next tick"}
+
+    @app.post("/api/funds/withdraw")
+    def funds_withdraw(req: WithdrawRequest, user: str = Depends(auth)):
+        from sentinel.funds import FundsError
+
+        eq, cash = _bal()
+        if eq is None:
+            raise HTTPException(400, "no account balance yet")
+        f = _funds()
+        try:
+            fid, chk = f.request_withdrawal(req.amount, eq, cash, req.profit_only, req.note)
+        except FundsError as e:
+            raise HTTPException(400, str(e)) from e
+        return {"id": fid, "ready": chk.ready, "message": chk.message,
+                "instructions": f.instructions(settings.market.venue, req.amount) if mode_now() != "PAPER" else
+                "PAPER mode: press Confirm to simulate the bank payout."}
+
+    @app.post("/api/funds/{flow_id}/{action}")
+    def funds_action(flow_id: int, action: str, user: str = Depends(auth)):
+        from sentinel.funds import FundsError
+
+        f = _funds()
+        try:
+            if action == "confirm":
+                f.confirm_withdrawal(flow_id)
+            elif action == "cancel":
+                f.cancel_withdrawal(flow_id)
+            else:
+                raise HTTPException(404, "unknown action")
+        except FundsError as e:
+            raise HTTPException(400, str(e)) from e
+        store.log_event("funds", f"withdrawal #{flow_id} {action} by {user}", mode=mode_now())
+        return {"ok": True}
 
     @app.post("/api/kill")
     def kill(req: KillRequest, user: str = Depends(auth)):

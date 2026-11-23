@@ -70,6 +70,7 @@ sentinel/
     monitoring/      JSON logging + redaction, alerts, health
     security/        vault, API-key safety checker
     gate/            LIVE readiness gate + capital cap
+    funds/           deposits, withdrawals, profit accounting (money stays at the venue)
     dashboard/       FastAPI app + single-page UI
     ops/             backups, NTP check, performance reports
   tests/  scripts/  docker/  docs/  notebooks/
@@ -114,6 +115,24 @@ sentinel live --confirm "I understand that I can lose real money"
 LIVE starts with a capital cap (default 250 in quote currency). Raise it in steps with
 `sentinel cap raise <amount>`, which requires weeks of live results that match paper.
 
+## Deposits, withdrawals & profit
+
+Your money stays in **your own exchange account** (UK: GBP via Faster Payments on Kraken or Coinbase).
+Sentinel **records** deposits (read-only sync or manual) and keeps invested capital separate from profit, so
+risk limits measure trading only. It **reserves** cash when you request a withdrawal, so the bot stops trading
+it. **You** send the money to your bank on the exchange, with 2FA. Sentinel never holds funds and never uses a key that can
+withdraw.
+
+```bash
+sentinel funds deposit 1000            # PAPER: simulated; LIVE: detected automatically
+sentinel funds status                  # invested vs profit, withdrawable now
+sentinel funds withdraw 250 --profit-only
+sentinel funds confirm <id>            # after you've sent it on the exchange
+sentinel funds export --year 2026      # CSV for HMRC records (not tax advice)
+```
+
+Full guide: [docs/FUNDING_UK.md](docs/FUNDING_UK.md). UK config profile: `config/uk-kraken.example.yaml`.
+
 ## Command reference
 
 | Command | Purpose |
@@ -135,6 +154,7 @@ LIVE starts with a capital cap (default 250 in quote currency). Raise it in step
 | `sentinel cap show / raise` | LIVE capital cap |
 | `sentinel ops timecheck / backup / restore` | operations |
 | `sentinel strategies` | list strategies and parameters |
+| `sentinel funds status / deposit / withdraw / confirm / cancel / history / sync / export` | deposits, withdrawals, profit |
 
 ## Dashboard
 
@@ -151,6 +171,7 @@ events, and the **KILL SWITCH** (type `KILL` to confirm).
 * Strategies: [EMA/ADX](docs/strategies/ema_adx.md), [RSI/Bollinger](docs/strategies/rsi_bb.md),
   [Donchian](docs/strategies/donchian.md), [Vol-adjusted momentum](docs/strategies/vol_momentum.md),
   [Supertrend MTF (plugin)](docs/strategies/supertrend_mtf.md), [Buy & hold](docs/strategies/buy_hold.md)
+* [Deposits, withdrawals & profit (UK)](docs/FUNDING_UK.md)
 * [Deployment](docs/DEPLOYMENT.md), [Runbook](docs/RUNBOOK.md), [Risk disclosure](docs/RISK_DISCLOSURE.md)
 * Every package under `sentinel/` has its own `README.md`.
 

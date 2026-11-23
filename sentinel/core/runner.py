@@ -72,6 +72,12 @@ class Runner:
         self.bars_processed = 0
         self.om.trade_listeners.append(self._on_trade)
         self._recover()
+        from sentinel.funds import Funds
+
+        self.funds = Funds(store, mode.value, settings.funds)
+        self.funds.ensure_opening(self.broker.balance()["equity"], ts=self.clock())
+        self.trader.reserved_provider = self.funds.reserved
+        self.last_funds_sync = 0.0
 
     # ---- recovery -------------------------------------------------------------------
     def _recover(self) -> None:
@@ -124,6 +130,7 @@ class Runner:
         if isinstance(self.broker, SimBroker):
             self.broker.on_bar(symbol, bar)
         close_ts = bar.ts + self.bar_s
+        self.process_funds(force_sync=bool(self.funds.flows(("requested", "ready"), "withdrawal")))
         bal = self.broker.balance()
         self.risk.on_equity(close_ts, bal["equity"])
         self.store.record_equity(self.mode.value, close_ts, bal["equity"], bal["cash"],
@@ -166,6 +173,30 @@ class Runner:
         self.bars_processed += 1
         self._persist()
         self.maybe_reconcile()
+
+    def process_funds(self, force_sync: bool = False) -> None:
+        """Read the venue's funding history (read-only), apply deposits/withdrawals to the accounting,
+        and mark reserved withdrawals ready once their cash is free."""
+        ex = getattr(self.broker, "ex", None)
+        now = self.clock()
+        if ex is not None and (force_sync or now - self.last_funds_sync >= self.s.funds.sync_interval_min * 60):
+            self.last_funds_sync = now
+            try:
+                self.funds.sync_from_exchange(ex)
+            except Exception as e:  # never let bookkeeping break trading
+                log.warning("funds sync failed", extra={"err": str(e)[:200]})
+        applied = self.funds.apply_pending(self.broker, self.risk, self.om.ledger, ts=now)
+        if applied:
+            self._persist()
+            if self.alerter:
+                for f in applied:
+                    self.alerter.send("funds", f"{f['kind']} of {f['amount']:,.2f} {f['currency']} recorded")
+        self.funds.refresh_ready(self.broker.balance()["cash"])
+
+    def tick(self) -> None:
+        """Periodic housekeeping between bars (live loop: every few seconds)."""
+        self.check_kill()
+        self.process_funds()
 
     def check_kill(self) -> bool:
         """Execute a kill requested via CLI/dashboard (shared state store). True if locked."""
