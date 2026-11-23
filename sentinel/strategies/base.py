@@ -31,18 +31,24 @@ class Param:
     step: float | None = None
     description: str = ""
 
-    def grid(self, n: int = 5) -> list[Any]:
-        if self.low is None or self.high is None:
-            return [self.default]
-        if self.step:
-            vals, v = [], self.low
-            while v <= self.high + 1e-12:
-                vals.append(type(self.default)(round(v, 10)))
-                v += self.step
-            return vals
+    def grid(self, n: int | None = 5) -> list[Any]:
+        """``n`` evenly spaced values in [low, high], snapped to ``step``; ``n=None`` enumerates every step."""
         import numpy as np
 
-        return [type(self.default)(x) for x in np.linspace(self.low, self.high, n)]
+        if self.low is None or self.high is None:
+            return [self.default]
+        if n is None and self.step:
+            raw = np.arange(self.low, self.high + self.step / 2, self.step)
+        else:
+            raw = np.linspace(self.low, self.high, n or 5)
+            if self.step:
+                raw = self.low + np.round((raw - self.low) / self.step) * self.step
+        out: list[Any] = []
+        for x in raw:
+            v = type(self.default)(round(float(x), 10))
+            if v not in out:
+                out.append(v)
+        return out
 
 
 class Strategy(ABC):

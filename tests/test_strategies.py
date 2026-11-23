@@ -57,6 +57,8 @@ def test_plugin_directory_discovered(tmp_path, monkeypatch):
 
 def test_param_grid():
     assert Param(10, 5, 15, 5).grid() == [5, 10, 15]
+    assert Param(10, 5, 50, 1).grid(4) == [5, 20, 35, 50]
+    assert len(Param(10, 5, 50, 1).grid(None)) == 46
     assert Param(1.0).grid() == [1.0]
 
 

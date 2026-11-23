@@ -41,3 +41,7 @@ htmlcov/
 .DS_Store
 .idea/
 .vscode/
+
+# Your local config (copy of config/sentinel.example.yaml)
+config/sentinel.yaml
+docker/pg_password.txt

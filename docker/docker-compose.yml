@@ -1,0 +1,68 @@
+# Sentinel: bot + dashboard (+ optional TimescaleDB).
+#
+#   docker compose -f docker/docker-compose.yml up -d            # paper bot + dashboard
+#   docker compose -f docker/docker-compose.yml --profile db up  # also start TimescaleDB
+#
+# The dashboard is published on 127.0.0.1 ONLY. Reach it remotely through an SSH
+# tunnel:  ssh -L 8765:127.0.0.1:8765 you@your-vps
+# Secrets: put SENTINEL_MASTER_PASSWORD in docker/.env (chmod 600, git-ignored), never here.
+
+name: sentinel
+
+x-common: &common
+  build:
+    context: ..
+    dockerfile: docker/Dockerfile
+  image: sentinel:latest
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    SENTINEL_CONFIG: /app/config/sentinel.yaml
+    SENTINEL_HOME: /data
+    TZ: UTC
+  volumes:
+    - sentinel-data:/data
+    - ../config/sentinel.yaml:/app/config/sentinel.yaml:ro
+  restart: unless-stopped          # automatic restart on crash
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: ["no-new-privileges:true"]
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options: {max-size: "20m", max-file: "5"}
+
+services:
+  bot:
+    <<: *common
+    command: ["paper"]             # change to ["live", "--confirm", "..."] only after the gate passes
+
+  dashboard:
+    <<: *common
+    command: ["dashboard", "--host", "0.0.0.0", "--allow-remote"]
+    ports:
+      - "127.0.0.1:8765:8765"      # host loopback only
+    depends_on: [bot]
+
+  timescaledb:
+    profiles: ["db"]
+    image: timescale/timescaledb:2.17.2-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_DB: sentinel
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_password
+    secrets: [pg_password]
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+
+secrets:
+  pg_password:
+    file: ./pg_password.txt         # create it yourself; git-ignored via *.txt rule below if desired
+
+volumes:
+  sentinel-data:
+  pg-data:

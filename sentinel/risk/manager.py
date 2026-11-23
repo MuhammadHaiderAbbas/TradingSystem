@@ -127,6 +127,7 @@ class RiskManager:
         self.trade_returns: list[float] = []  # R-multiples for Kelly
         self._halt: dict | None = None
         self.vetoes: list[dict] = []
+        self._veto_logged: dict[tuple[str, str], float] = {}
         self._restore()
 
     # ---- persistence -----------------------------------------------------------------
@@ -289,6 +290,11 @@ class RiskManager:
         rec = {"ts": ctx.ts, "symbol": intent.symbol, "side": intent.side.value, "purpose": intent.purpose.value,
                "strategy": intent.strategy, "reason": reason}
         self.vetoes.append(rec)
+        key = (intent.symbol, reason)
+        last = self._veto_logged.get(key)
+        if last is not None and abs(ctx.ts - last) < 3600:
+            return RiskDecision(False, 0.0, reason, checks)  # counted, but don't spam the log/event store
+        self._veto_logged[key] = ctx.ts
         log.info("risk veto", extra=rec)
         if self._persist():
             self.store.log_event("veto", reason, level="WARNING", mode=self.mode.value, data=rec, ts=ctx.ts)

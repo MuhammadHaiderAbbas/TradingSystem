@@ -1,0 +1,338 @@
+{
+ "buy_hold": {
+  "strategy": "buy_hold",
+  "is_return": -0.01595886058537621,
+  "bench": -0.6556303375465546,
+  "sharpe": -1.3297792921026372,
+  "mdd": -0.01595886058537621,
+  "trades": 2,
+  "win": 0.0,
+  "pf": 0.0,
+  "fees": 19.868880118705707,
+  "wf_oos_return": null,
+  "wf_is": null,
+  "wf_oos": null,
+  "ho_return": -0.021494890283430546,
+  "ho_bench": -0.11269977313655166,
+  "ho_sharpe": -1.550980361039699,
+  "ho_mdd": -0.028687301606221016,
+  "ho_trades": 2,
+  "mc_p5": -0.016818303597707085,
+  "mc_p95": -0.015072270910525432,
+  "periods": [
+   {
+    "period": "bull",
+    "bars": 2639,
+    "strategy_return": 0.0,
+    "benchmark_return": 0.9051564343948526,
+    "worst_bar": 0.0,
+    "share_of_time": 0.18828481735159816
+   },
+   {
+    "period": "bear",
+    "bars": 4592,
+    "strategy_return": 0.0,
+    "benchmark_return": -0.620781042057222,
+    "worst_bar": 0.0,
+    "share_of_time": 0.3276255707762557
+   },
+   {
+    "period": "sideways",
+    "bars": 6572,
+    "strategy_return": -0.015958860585376322,
+    "benchmark_return": -0.33977534938463483,
+    "worst_bar": -0.006145031222142605,
+    "share_of_time": 0.4688926940639269
+   },
+   {
+    "period": "crash",
+    "bars": 213,
+    "strategy_return": 0.0,
+    "benchmark_return": -0.27804111232501805,
+    "worst_bar": 0.0,
+    "share_of_time": 0.015196917808219178
+   }
+  ],
+  "halts": 0
+ },
+ "ema_adx": {
+  "strategy": "ema_adx",
+  "is_return": -0.1470145890284006,
+  "bench": -0.6556303375465546,
+  "sharpe": -1.2201862686946365,
+  "mdd": -0.15048529622735063,
+  "trades": 44,
+  "win": 0.1590909090909091,
+  "pf": 0.41615487595336226,
+  "fees": 395.16380171838415,
+  "wf_oos_return": -0.1766940338816101,
+  "wf_is": 0.47782728021723625,
+  "wf_oos": -0.9494472664668381,
+  "ho_return": 0.01929213744660152,
+  "ho_bench": -0.11269977313655166,
+  "ho_sharpe": 0.3151442284410565,
+  "ho_mdd": -0.1268575333600459,
+  "ho_trades": 53,
+  "mc_p5": -0.2358753378312744,
+  "mc_p95": -0.02890861897260395,
+  "periods": [
+   {
+    "period": "bull",
+    "bars": 2639,
+    "strategy_return": 0.0,
+    "benchmark_return": 0.9051564343948526,
+    "worst_bar": 0.0,
+    "share_of_time": 0.18828481735159816
+   },
+   {
+    "period": "bear",
+    "bars": 4592,
+    "strategy_return": -0.046649494277461234,
+    "benchmark_return": -0.620781042057222,
+    "worst_bar": -0.012429158921512196,
+    "share_of_time": 0.3276255707762557
+   },
+   {
+    "period": "sideways",
+    "bars": 6572,
+    "strategy_return": -0.10527617507778297,
+    "benchmark_return": -0.33977534938463483,
+    "worst_bar": -0.01961193421661611,
+    "share_of_time": 0.4688926940639269
+   },
+   {
+    "period": "crash",
+    "bars": 213,
+    "strategy_return": 0.0,
+    "benchmark_return": -0.27804111232501805,
+    "worst_bar": 0.0,
+    "share_of_time": 0.015196917808219178
+   }
+  ],
+  "halts": 8
+ },
+ "rsi_bb": {
+  "strategy": "rsi_bb",
+  "is_return": -0.1457244707807971,
+  "bench": -0.6556303375465546,
+  "sharpe": -1.0936253940884355,
+  "mdd": -0.1590628937760219,
+  "trades": 144,
+  "win": 0.5277777777777778,
+  "pf": 0.7673860059544928,
+  "fees": 1150.9724142607745,
+  "wf_oos_return": 0.05931749812300802,
+  "wf_is": 1.1995225161449439,
+  "wf_oos": 0.4720234518286557,
+  "ho_return": -0.060277598217483686,
+  "ho_bench": -0.11269977313655166,
+  "ho_sharpe": -1.6679995907494234,
+  "ho_mdd": -0.09000925442958063,
+  "ho_trades": 44,
+  "mc_p5": -0.285451563931178,
+  "mc_p95": 0.008868358561545584,
+  "periods": [
+   {
+    "period": "bull",
+    "bars": 2639,
+    "strategy_return": 0.05582579790968545,
+    "benchmark_return": 0.9051564343948526,
+    "worst_bar": -0.009651958692119655,
+    "share_of_time": 0.18828481735159816
+   },
+   {
+    "period": "bear",
+    "bars": 4592,
+    "strategy_return": -0.026238144096418003,
+    "benchmark_return": -0.620781042057222,
+    "worst_bar": -0.012003510455916855,
+    "share_of_time": 0.3276255707762557
+   },
+   {
+    "period": "sideways",
+    "bars": 6572,
+    "strategy_return": -0.08055934413807431,
+    "benchmark_return": -0.33977534938463483,
+    "worst_bar": -0.010616827819756813,
+    "share_of_time": 0.4688926940639269
+   },
+   {
+    "period": "crash",
+    "bars": 213,
+    "strategy_return": -0.0962896941724114,
+    "benchmark_return": -0.27804111232501805,
+    "worst_bar": -0.008269966612853397,
+    "share_of_time": 0.015196917808219178
+   }
+  ],
+  "halts": 3
+ },
+ "donchian": {
+  "strategy": "donchian",
+  "is_return": -0.15066217907449098,
+  "bench": -0.6556303375465546,
+  "sharpe": -0.7357745255041253,
+  "mdd": -0.15066217907449098,
+  "trades": 59,
+  "win": 0.3050847457627119,
+  "pf": 0.5610020280089646,
+  "fees": 515.7968566222257,
+  "wf_oos_return": -0.17612063159754543,
+  "wf_is": 0.043428281821311754,
+  "wf_oos": -0.7779614084367227,
+  "ho_return": -0.1590504375034576,
+  "ho_bench": -0.11269977313655166,
+  "ho_sharpe": -2.575422304230728,
+  "ho_mdd": -0.16796093663443434,
+  "ho_trades": 41,
+  "mc_p5": -0.2579377940035423,
+  "mc_p95": -0.004097493520933617,
+  "periods": [
+   {
+    "period": "bull",
+    "bars": 2639,
+    "strategy_return": 0.008122837203591748,
+    "benchmark_return": 0.9051564343948526,
+    "worst_bar": -0.019999264095734492,
+    "share_of_time": 0.18828481735159816
+   },
+   {
+    "period": "bear",
+    "bars": 4592,
+    "strategy_return": 0.04214021789120381,
+    "benchmark_return": -0.620781042057222,
+    "worst_bar": -0.01337223517857733,
+    "share_of_time": 0.3276255707762557
+   },
+   {
+    "period": "sideways",
+    "bars": 6572,
+    "strategy_return": -0.1915729171579269,
+    "benchmark_return": -0.33977534938463483,
+    "worst_bar": -0.039084015720448506,
+    "share_of_time": 0.4688926940639269
+   },
+   {
+    "period": "crash",
+    "bars": 213,
+    "strategy_return": 0.0,
+    "benchmark_return": -0.27804111232501805,
+    "worst_bar": 0.0,
+    "share_of_time": 0.015196917808219178
+   }
+  ],
+  "halts": 6
+ },
+ "vol_momentum": {
+  "strategy": "vol_momentum",
+  "is_return": -0.1509145825148862,
+  "bench": -0.6556303375465546,
+  "sharpe": -1.5523144134570717,
+  "mdd": -0.15622529344553515,
+  "trades": 79,
+  "win": 0.189873417721519,
+  "pf": 0.3846707403030676,
+  "fees": 717.0368483475337,
+  "wf_oos_return": -0.20041139559363896,
+  "wf_is": -0.48333657722266365,
+  "wf_oos": -1.8380433782123686,
+  "ho_return": -0.15161636119697464,
+  "ho_bench": -0.11269977313655166,
+  "ho_sharpe": -2.4100178886894685,
+  "ho_mdd": -0.15785232668065474,
+  "ho_trades": 87,
+  "mc_p5": -0.22413984036566753,
+  "mc_p95": -0.05407220904448176,
+  "periods": [
+   {
+    "period": "bull",
+    "bars": 2639,
+    "strategy_return": 0.0,
+    "benchmark_return": 0.9051564343948526,
+    "worst_bar": 0.0,
+    "share_of_time": 0.18828481735159816
+   },
+   {
+    "period": "bear",
+    "bars": 4592,
+    "strategy_return": -0.02925629531883167,
+    "benchmark_return": -0.620781042057222,
+    "worst_bar": -0.010235919542844418,
+    "share_of_time": 0.3276255707762557
+   },
+   {
+    "period": "sideways",
+    "bars": 6572,
+    "strategy_return": -0.1253248273559625,
+    "benchmark_return": -0.33977534938463483,
+    "worst_bar": -0.019967376773390444,
+    "share_of_time": 0.4688926940639269
+   },
+   {
+    "period": "crash",
+    "bars": 213,
+    "strategy_return": 0.0,
+    "benchmark_return": -0.27804111232501805,
+    "worst_bar": 0.0,
+    "share_of_time": 0.015196917808219178
+   }
+  ],
+  "halts": 11
+ },
+ "supertrend_mtf": {
+  "strategy": "supertrend_mtf",
+  "is_return": -0.14229725702614526,
+  "bench": -0.6556303375465546,
+  "sharpe": -1.674485205067025,
+  "mdd": -0.15002032690946687,
+  "trades": 54,
+  "win": 0.1111111111111111,
+  "pf": 0.3127766917290444,
+  "fees": 492.9479863800243,
+  "wf_oos_return": -0.3911155697864114,
+  "wf_is": -0.8546313095395268,
+  "wf_oos": -2.6967948662789856,
+  "ho_return": -0.08937962070931293,
+  "ho_bench": -0.11269977313655166,
+  "ho_sharpe": -0.9614730643388915,
+  "ho_mdd": -0.14876753259904585,
+  "ho_trades": 80,
+  "mc_p5": -0.20066151009020985,
+  "mc_p95": -0.07314887522838498,
+  "periods": [
+   {
+    "period": "bull",
+    "bars": 2639,
+    "strategy_return": 0.0,
+    "benchmark_return": 0.9051564343948526,
+    "worst_bar": 0.0,
+    "share_of_time": 0.18828481735159816
+   },
+   {
+    "period": "bear",
+    "bars": 4592,
+    "strategy_return": 0.0,
+    "benchmark_return": -0.620781042057222,
+    "worst_bar": 0.0,
+    "share_of_time": 0.3276255707762557
+   },
+   {
+    "period": "sideways",
+    "bars": 6572,
+    "strategy_return": -0.14229725702614593,
+    "benchmark_return": -0.33977534938463483,
+    "worst_bar": -0.014470690333130642,
+    "share_of_time": 0.4688926940639269
+   },
+   {
+    "period": "crash",
+    "bars": 213,
+    "strategy_return": 0.0,
+    "benchmark_return": -0.27804111232501805,
+    "worst_bar": 0.0,
+    "share_of_time": 0.015196917808219178
+   }
+  ],
+  "halts": 9
+ }
+}
